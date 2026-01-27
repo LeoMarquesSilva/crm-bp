@@ -1,7 +1,13 @@
-import { TrendingUp, ExternalLink } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { TrendingUp, ExternalLink, BarChart3, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Header() {
+  const { pathname } = useLocation()
+  const isValidacao = pathname === '/validacao'
+  const isSla = pathname === '/sla'
+  const isDashboardBi = pathname === '/dashboard-bi'
+
   return (
     <header 
       className="relative border-b border-primary/30 shadow-md overflow-hidden sticky top-0 z-10"
@@ -20,12 +26,54 @@ export function Header() {
         />
       </div>
 
-      <div className="relative px-6 lg:px-8 py-4 flex items-center justify-center">
+      <div className="relative px-6 lg:px-8 py-4 flex items-center justify-between">
+        {/* Validação - left */}
+        <motion.nav
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="flex items-center"
+        >
+          <Link
+            to="/validacao"
+            className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border ${
+              isValidacao
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+          >
+            Validação
+          </Link>
+          <Link
+            to="/sla"
+            className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+              isSla
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+          >
+            <Clock className="h-4 w-4" />
+            SLA
+          </Link>
+          <Link
+            to="/dashboard-bi"
+            className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+              isDashboardBi
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Dashboard BI
+          </Link>
+        </motion.nav>
+
+        {/* Logo - center */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="flex items-center justify-center"
+          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
         >
           <img 
             src="/logo.png" 
@@ -34,9 +82,9 @@ export function Header() {
           />
         </motion.div>
 
-        {/* RD Station Link - positioned absolutely on the right */}
+        {/* RD Station - right */}
         <motion.nav 
-          className="absolute right-6 lg:right-8 flex items-center"
+          className="flex items-center"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
@@ -45,7 +93,7 @@ export function Header() {
             href="#"
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/90 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-sales/50 transition-all duration-300 text-sm font-semibold shadow-sm hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+            className="group flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/90 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-sales/50 transition-all duration-300 text-sm font-semibold shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             <TrendingUp className="h-4 w-4 text-sales group-hover:scale-110 transition-transform" />
             <span>RD Station CRM</span>

@@ -1,4 +1,5 @@
-import { TrendingUp, Users, UserPlus, Sparkles } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { TrendingUp, Users, UserPlus, Sparkles, FileSpreadsheet } from 'lucide-react'
 import { useAppStore } from '@/stores/appStore'
 import { StepCard } from '@/components/StepCard'
 import { salesFunnelSteps } from '@/data/salesFunnel'
@@ -7,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { useEffect } from 'react'
 
 export function Sidebar() {
+  const navigate = useNavigate()
   const { currentFunnel, setCurrentFunnel, activeStep, setActiveStep } = useAppStore()
   const allSteps = currentFunnel === 'sales' ? salesFunnelSteps : postFunnelSteps
   
@@ -31,6 +33,7 @@ export function Sidebar() {
     if (index > currentActiveIndex + 1) {
       console.warn('Evite pular etapas — sequência necessária para integridade dos dados.')
     }
+    navigate('/')
     setActiveStep(steps[index].id)
   }
 
@@ -60,6 +63,7 @@ export function Sidebar() {
         </h2>
         <div
           onClick={() => {
+            navigate('/')
             setCurrentFunnel('sales')
             setActiveStep('cadastro-lead')
           }}
@@ -99,7 +103,10 @@ export function Sidebar() {
         </h2>
         <div className="space-y-2">
           <button
-            onClick={() => setCurrentFunnel('sales')}
+            onClick={() => {
+              navigate('/')
+              setCurrentFunnel('sales')
+            }}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-280',
               currentFunnel === 'sales'
@@ -111,7 +118,10 @@ export function Sidebar() {
             <span className="font-medium">Vendas</span>
           </button>
           <button
-            onClick={() => setCurrentFunnel('post')}
+            onClick={() => {
+              navigate('/')
+              setCurrentFunnel('post')
+            }}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-280',
               currentFunnel === 'post'
