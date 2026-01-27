@@ -279,7 +279,6 @@ export function ValidacaoSheets() {
   },
     onError: () => setError('Não foi possível conectar com o Google. Tente novamente.'),
     scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
-    redirect_uri: typeof window !== 'undefined' ? window.location.origin : undefined,
   })
 
   const disconnect = () => {
@@ -303,7 +302,7 @@ export function ValidacaoSheets() {
       setSessionRestoreAttempted(true)
       return
     }
-    supabase
+    const chain = supabase
       .from('sessoes_google')
       .select('access_token, expires_at')
       .eq('session_id', sessionId)
@@ -316,7 +315,7 @@ export function ValidacaoSheets() {
         saveToken(row.access_token, sec)
         setAccessToken(row.access_token)
       })
-      .finally(() => setSessionRestoreAttempted(true))
+    void Promise.resolve(chain).finally(() => setSessionRestoreAttempted(true))
   }, [accessToken])
 
   // Carrega histórico de envios WhatsApp quando a aba é exibida
@@ -325,7 +324,7 @@ export function ValidacaoSheets() {
     let cancelled = false
     setHistoricoWppLoading(true)
     setHistoricoWppError(null)
-    supabase
+    const chain = supabase
       .from('historico_envio_whatsapp')
       .select('id, created_at, telefone, mensagem, id_registro, email_notificar, email_solicitante, stage_name, funil, deal_id, planilha_id, nome_aba, corrigido_em, tempo_minutos')
       .order('created_at', { ascending: false })
@@ -339,9 +338,9 @@ export function ValidacaoSheets() {
         }
         setHistoricoWpp((rows as HistoricoWppRow[]) || [])
       })
-      .finally(() => {
-        if (!cancelled) setHistoricoWppLoading(false)
-      })
+    void Promise.resolve(chain).finally(() => {
+      if (!cancelled) setHistoricoWppLoading(false)
+    })
     return () => { cancelled = true }
   }, [abaAtiva])
 
@@ -360,7 +359,7 @@ export function ValidacaoSheets() {
     if (abaAtiva === 'historico_wpp' && supabase) {
       setHistoricoWppLoading(true)
       setHistoricoWppError(null)
-      supabase
+      const chain = supabase
         .from('historico_envio_whatsapp')
         .select('id, created_at, telefone, mensagem, id_registro, email_notificar, email_solicitante, stage_name, funil, deal_id, planilha_id, nome_aba, corrigido_em, tempo_minutos')
         .order('created_at', { ascending: false })
@@ -373,14 +372,15 @@ export function ValidacaoSheets() {
           }
           setHistoricoWpp((rows as HistoricoWppRow[]) || [])
         })
-        .finally(() => setHistoricoWppLoading(false))
+      void Promise.resolve(chain).finally(() => setHistoricoWppLoading(false))
     }
   }, [abaAtiva])
 
   // Quando uma validação mostra leads válidos, marca os envios correspondentes como "corrigido" e registra o tempo.
   // Busca por (planilha_id, nome_aba, row_index) para não depender de id_registro, que pode mudar quando a pessoa corrige (ex.: preenche "nome").
   useEffect(() => {
-    if (!supabase || !data?.results?.length) return
+    const db = supabase
+    if (!db || !data?.results?.length) return
     const validRows = data.results.filter((r) => r.valid)
     if (validRows.length === 0) {
       console.log('[Histórico WhatsApp] Validação com', data.results.length, 'resultados, nenhum válido para marcar como corrigido.')
@@ -391,7 +391,7 @@ export function ValidacaoSheets() {
     const promises: Promise<void>[] = []
     validRows.forEach((r) => {
       const buscarPorLinha = () =>
-        supabase
+        db
           .from('historico_envio_whatsapp')
           .select('id, created_at')
           .eq('planilha_id', PLANILHA_ID || '')
@@ -403,7 +403,7 @@ export function ValidacaoSheets() {
           .maybeSingle()
 
       const buscarPorIdRegistro = () =>
-        supabase
+        db
           .from('historico_envio_whatsapp')
           .select('id, created_at')
           .eq('id_registro', String(r.id_registro ?? '').trim())
@@ -420,7 +420,7 @@ export function ValidacaoSheets() {
             }
             return buscarPorIdRegistro()
           }
-          if (row) return { data: row, error: null }
+          if (row) return Promise.resolve({ data: row, error: null } as Awaited<ReturnType<typeof buscarPorLinha>>)
           return buscarPorIdRegistro()
         })
         .then((res: { data: { id: string; created_at: string } | null; error: unknown }) => {
@@ -433,7 +433,7 @@ export function ValidacaoSheets() {
           const sentAt = new Date(row.created_at).getTime()
           const tempoMinutos = Math.round((now.getTime() - sentAt) / 60000)
           const corrigidoEm = new Date(sentAt + tempoMinutos * 60000).toISOString()
-          return supabase
+          return db
             .from('historico_envio_whatsapp')
             .update({
               corrigido_em: corrigidoEm,
@@ -455,7 +455,7 @@ export function ValidacaoSheets() {
               console.log('[Histórico WhatsApp] Marcado como corrigido: linha', r.rowIndex, r.id_registro, 'em', tempoMinutos, 'min')
             })
         })
-      promises.push(p)
+      promises.push(Promise.resolve(p).then(() => {}))
     })
     Promise.allSettled(promises).then(() => {
       setTimeout(recarregarHistoricoWpp, 800)

@@ -234,7 +234,7 @@ export function LeadsForaSLA() {
       setSessionRestoreAttempted(true)
       return
     }
-    supabase
+    const chain = supabase
       .from('sessoes_google')
       .select('access_token, expires_at')
       .eq('session_id', sessionId)
@@ -252,7 +252,7 @@ export function LeadsForaSLA() {
         setAccessToken(row.access_token)
         saveToken(row.access_token, Math.max(0, Math.round((expiresAt - Date.now()) / 1000)))
       })
-      .finally(() => setSessionRestoreAttempted(true))
+    void Promise.resolve(chain).finally(() => setSessionRestoreAttempted(true))
   }, [accessToken])
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
@@ -283,7 +283,6 @@ export function LeadsForaSLA() {
     },
     onError: () => setError('Não foi possível conectar com o Google. Tente novamente.'),
     scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
-    redirect_uri: typeof window !== 'undefined' ? window.location.origin : undefined,
   })
 
   const disconnect = () => {
