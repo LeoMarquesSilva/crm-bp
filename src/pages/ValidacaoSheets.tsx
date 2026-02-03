@@ -1027,7 +1027,7 @@ export function ValidacaoSheets() {
                 email_notificar: reenviarRow.email_notificar ?? null,
                 email_solicitante: reenviarRow.email_solicitante ?? null,
                 stage_name: reenviarRow.stage_name ?? null,
-                funil: reenviarRow.funil ?? null,
+                funil: ('funil' in reenviarRow ? reenviarRow.funil : null) ?? null,
                 deal_id: reenviarRow.deal_id ?? null,
                 planilha_id: reenviarRow.planilha_id ?? PLANILHA_ID ?? null,
                 nome_aba: reenviarRow.nome_aba ?? PLANILHA_ABA ?? null,
@@ -1041,7 +1041,7 @@ export function ValidacaoSheets() {
                 email_notificar: reenviarRow.email_notificar || null,
                 email_solicitante: reenviarRow.email_solicitante || null,
                 stage_name: reenviarRow.stage_name || null,
-                funil: reenviarRow.funil || null,
+                funil: ('funil' in reenviarRow ? reenviarRow.funil : null) || null,
                 deal_id: reenviarRow.deal_id || null,
                 planilha_id: reenviarRow.planilha_id || PLANILHA_ID || null,
                 nome_aba: reenviarRow.nome_aba || PLANILHA_ABA || null,
@@ -3031,12 +3031,14 @@ export function ValidacaoSheets() {
                     </ul>
                   </div>
                 </>
-              ) : 'rows' in historicoDetailRow ? (
+              ) : 'rows' in historicoDetailRow && !('isLote' in historicoDetailRow) ? (() => {
+                const slaRow = historicoDetailRow as HistoricoSlaAgrupadoRow
+                return (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Status</span>
-                      {historicoDetailRow.corrigido_em ? (
+                      {slaRow.corrigido_em ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Atualizado no RD</span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Pendente</span>
@@ -3044,59 +3046,59 @@ export function ValidacaoSheets() {
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Qtd envios</span>
-                      <span className="font-semibold text-primary">{historicoDetailRow.qtd_envios}</span>
+                      <span className="font-semibold text-primary">{slaRow.qtd_envios}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Primeiro envio</span>
-                      {new Date(historicoDetailRow.primeira_vez_enviado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {new Date(slaRow.primeira_vez_enviado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Último envio</span>
-                      {new Date(historicoDetailRow.ultima_vez_enviado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {new Date(slaRow.ultima_vez_enviado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Tempo sem resolução</span>
-                      {historicoDetailRow.tempo_sem_resolucao_dias != null ? (
+                      {slaRow.tempo_sem_resolucao_dias != null ? (
                         <span className="text-amber-700 font-medium">
-                          {historicoDetailRow.tempo_sem_resolucao_dias === 0 ? '< 1 dia' : historicoDetailRow.tempo_sem_resolucao_dias === 1 ? '1 dia' : `${historicoDetailRow.tempo_sem_resolucao_dias} dias`}
+                          {slaRow.tempo_sem_resolucao_dias === 0 ? '< 1 dia' : slaRow.tempo_sem_resolucao_dias === 1 ? '1 dia' : `${slaRow.tempo_sem_resolucao_dias} dias`}
                         </span>
-                      ) : historicoDetailRow.tempo_minutos != null ? (
-                        <span className="text-emerald-700">Resolvido em {historicoDetailRow.tempo_minutos < 60 ? `${historicoDetailRow.tempo_minutos} min` : historicoDetailRow.tempo_minutos < 1440 ? `${Math.floor(historicoDetailRow.tempo_minutos / 60)}h` : `${Math.floor(historicoDetailRow.tempo_minutos / 1440)}d`}</span>
+                      ) : slaRow.tempo_minutos != null ? (
+                        <span className="text-emerald-700">Resolvido em {slaRow.tempo_minutos < 60 ? `${slaRow.tempo_minutos} min` : slaRow.tempo_minutos < 1440 ? `${Math.floor(slaRow.tempo_minutos / 60)}h` : `${Math.floor(slaRow.tempo_minutos / 1440)}d`}</span>
                       ) : (
                         '—'
                       )}
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-gray-500 block text-xs font-medium">Lead</span>
-                      {historicoDetailRow.deal_id ? (
-                        <a href={`https://crm.rdstation.com/app/deals/${historicoDetailRow.deal_id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {historicoDetailRow.id_registro || historicoDetailRow.deal_id}
+                      {slaRow.deal_id ? (
+                        <a href={`https://crm.rdstation.com/app/deals/${slaRow.deal_id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {slaRow.id_registro || slaRow.deal_id}
                         </a>
                       ) : (
-                        historicoDetailRow.id_registro || '—'
+                        slaRow.id_registro || '—'
                       )}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Telefone</span>
-                      <span className="font-mono">{historicoDetailRow.telefone}</span>
+                      <span className="font-mono">{slaRow.telefone}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Responsável</span>
                       {(() => {
-                        const email = (historicoDetailRow.email_solicitante || historicoDetailRow.email_notificar || '').trim()
+                        const email = (slaRow.email_solicitante || slaRow.email_notificar || '').trim()
                         const member = email ? getTeamMember(email) : null
                         return member ? <span className="inline-flex items-center gap-2"><img src={member.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />{member.name}</span> : email || '—'
                       })()}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Etapa</span>
-                      {historicoDetailRow.stage_name || '—'}
+                      {slaRow.stage_name || '—'}
                     </div>
                   </div>
                   <div>
-                    <span className="text-gray-500 block text-xs font-medium mb-2">Histórico de envios ({historicoDetailRow.rows.length})</span>
+                    <span className="text-gray-500 block text-xs font-medium mb-2">Histórico de envios ({slaRow.rows.length})</span>
                     <ul className="space-y-2 max-h-56 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-100">
-                      {historicoDetailRow.rows.map((r, i) => (
+                      {slaRow.rows.map((r, i) => (
                         <li key={r.id} className="p-3 bg-gray-50/50">
                           <p className="text-xs text-gray-500 font-medium">
                             Envio {i + 1} — {new Date(r.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
@@ -3107,12 +3109,15 @@ export function ValidacaoSheets() {
                     </ul>
                   </div>
                 </>
-              ) : (
+                )
+              })() : (() => {
+                const wppRow = historicoDetailRow as HistoricoWppRow
+                return (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Status</span>
-                      {historicoDetailRow.corrigido_em ? (
+                      {wppRow.corrigido_em ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Atualizado no RD</span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Pendente</span>
@@ -3120,34 +3125,34 @@ export function ValidacaoSheets() {
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Enviado no WhatsApp em</span>
-                      {new Date(historicoDetailRow.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {new Date(wppRow.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">{historicoFiltro === 'validacao' ? 'Corrigido em' : 'Atualizado no RD em'}</span>
-                      {historicoDetailRow.corrigido_em ? new Date(historicoDetailRow.corrigido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                      {wppRow.corrigido_em ? new Date(wppRow.corrigido_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Tempo</span>
-                      {historicoDetailRow.tempo_minutos != null ? (historicoDetailRow.tempo_minutos < 60 ? `${historicoDetailRow.tempo_minutos} min` : historicoDetailRow.tempo_minutos < 1440 ? `${Math.floor(historicoDetailRow.tempo_minutos / 60)}h ${historicoDetailRow.tempo_minutos % 60}min` : `${Math.floor(historicoDetailRow.tempo_minutos / 1440)}d`) : '—'}
+                      {wppRow.tempo_minutos != null ? (wppRow.tempo_minutos < 60 ? `${wppRow.tempo_minutos} min` : wppRow.tempo_minutos < 1440 ? `${Math.floor(wppRow.tempo_minutos / 60)}h ${wppRow.tempo_minutos % 60}min` : `${Math.floor(wppRow.tempo_minutos / 1440)}d`) : '—'}
                     </div>
                     <div className="sm:col-span-2">
                       <span className="text-gray-500 block text-xs font-medium">Lead</span>
-                      {historicoDetailRow.deal_id ? (
-                        <a href={`https://crm.rdstation.com/app/deals/${historicoDetailRow.deal_id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {historicoDetailRow.id_registro || historicoDetailRow.deal_id}
+                      {wppRow.deal_id ? (
+                        <a href={`https://crm.rdstation.com/app/deals/${wppRow.deal_id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          {wppRow.id_registro || wppRow.deal_id}
                         </a>
                       ) : (
-                        historicoDetailRow.id_registro || '—'
+                        wppRow.id_registro || '—'
                       )}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Telefone</span>
-                      <span className="font-mono">{historicoDetailRow.telefone}</span>
+                      <span className="font-mono">{wppRow.telefone}</span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Responsável</span>
                       {(() => {
-                        const email = (historicoDetailRow.email_solicitante || historicoDetailRow.email_notificar || '').trim()
+                        const email = (wppRow.email_solicitante || wppRow.email_notificar || '').trim()
                         const member = email ? getTeamMember(email) : null
                         if (member) return <span className="inline-flex items-center gap-2"><img src={member.avatar} alt="" className="h-6 w-6 rounded-full object-cover" />{member.name}</span>
                         return email || '—'
@@ -3155,21 +3160,22 @@ export function ValidacaoSheets() {
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Etapa</span>
-                      {historicoDetailRow.stage_name || '—'}
+                      {wppRow.stage_name || '—'}
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs font-medium">Funil</span>
-                      {historicoDetailRow.funil || '—'}
+                      {wppRow.funil || '—'}
                     </div>
                   </div>
                   <div>
                     <span className="text-gray-500 block text-xs font-medium mb-1">Mensagem</span>
                     <pre className="p-3 bg-gray-50 rounded-lg text-gray-800 whitespace-pre-wrap break-words max-h-48 overflow-y-auto border border-gray-100">
-                      {historicoDetailRow.mensagem || '—'}
+                      {wppRow.mensagem || '—'}
                     </pre>
                   </div>
                 </>
-              )}
+                )
+              })()}
             </div>
             <div className="p-4 border-t border-gray-200 flex justify-end">
               <button type="button" onClick={() => setHistoricoDetailRow(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
