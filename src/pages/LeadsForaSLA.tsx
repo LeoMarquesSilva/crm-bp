@@ -4,8 +4,9 @@
  * para "tempo na etapa". Dados da mesma API validar-sheets.
  */
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
-import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter } from 'lucide-react'
+import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter, History } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { getTeamMember, getSolicitanteKey } from '@/data/teamAvatars'
 import { supabase } from '@/lib/supabase'
@@ -100,6 +101,11 @@ function isOngoing(status: string | null | undefined): boolean {
   if (!status) return true
   const s = status.toLowerCase()
   return s !== 'won' && s !== 'win' && s !== 'lost' && s !== 'perda' && s !== 'ganho'
+}
+
+function isPaused(status: string | null | undefined): boolean {
+  if (!status) return false
+  return status.trim().toLowerCase() === 'paused'
 }
 
 function onlyDigits(s: string): string {
@@ -301,11 +307,44 @@ export function LeadsForaSLA() {
       results.filter((r) => {
         if (!isFunilDeVendas(r.funil)) return false
         if (!isOngoing(r.status)) return false
+        if (isPaused(r.status)) return false
         const dias = r.dias_desde_atualizacao
         return dias != null && dias > SLA_DIAS
       }),
     [results]
   )
+
+  // Marcar "atualizado no RD" em histórico SLA quando o lead sair da lista fora do SLA
+  useEffect(() => {
+    const db = supabase
+    if (!db || !data?.results?.length) return
+    const foraDoSlaKeys = new Set(foraDoSla.map((r) => `${PLANILHA_ID}|${PLANILHA_ABA ?? ''}|${r.rowIndex}`))
+    const foraDoSlaIdRegistros = new Set(foraDoSla.map((r) => (r.id_registro ?? '').trim()).filter(Boolean))
+    let cancelled = false
+    db.from('historico_envio_whatsapp')
+      .select('id, created_at, row_index, id_registro, planilha_id, nome_aba')
+      .eq('origem', 'sla')
+      .is('corrigido_em', null)
+      .limit(300)
+      .then(({ data: rows, error }) => {
+        if (cancelled || error || !rows?.length) return
+        const now = Date.now()
+        rows.forEach((row: { id: string; created_at: string; row_index: number | null; id_registro: string | null; planilha_id: string | null; nome_aba: string | null }) => {
+          const key = `${row.planilha_id ?? ''}|${row.nome_aba ?? ''}|${row.row_index ?? ''}`
+          const aindaForaSla = foraDoSlaKeys.has(key) || (row.id_registro && foraDoSlaIdRegistros.has((row.id_registro || '').trim()))
+          if (!aindaForaSla) {
+            const sentAt = new Date(row.created_at).getTime()
+            const tempoMinutos = Math.round((now - sentAt) / 60000)
+            const corrigidoEm = new Date(sentAt + tempoMinutos * 60000).toISOString()
+            db.from('historico_envio_whatsapp')
+              .update({ corrigido_em: corrigidoEm, tempo_minutos: tempoMinutos })
+              .eq('id', row.id)
+              .then(() => {})
+          }
+        })
+      })
+    return () => { cancelled = true }
+  }, [data, foraDoSla, supabase])
 
   const slaPorSolicitante = useMemo(() => {
     const map = new Map<string, number>()
@@ -427,6 +466,7 @@ export function LeadsForaSLA() {
       }
       if (supabase) {
         await supabase.from('historico_envio_whatsapp').insert({
+          origem: 'sla',
           telefone: telefone.length <= 11 ? `55${telefone}` : telefone,
           mensagem,
           id_registro: (wppModalRow.id_registro ?? '').trim() || null,
@@ -474,21 +514,31 @@ export function LeadsForaSLA() {
         return
       }
       if (supabase) {
-        await supabase.from('historico_envio_whatsapp').insert({
-          telefone: telefone.length <= 11 ? `55${telefone}` : telefone,
+        const telefoneFormatado = telefone.length <= 11 ? `55${telefone}` : telefone
+        const rows = wppModalBatch.map((r) => ({
+          origem: 'sla',
+          telefone: telefoneFormatado,
           mensagem,
-          id_registro: (wppModalBatch[0]?.id_registro ?? '').trim() || null,
-          row_index: wppModalBatch[0]?.rowIndex ?? null,
-          email_notificar: wppModalBatch[0]?.email_notificar || null,
-          email_solicitante: wppModalBatch[0]?.email_solicitante || null,
-          stage_name: wppModalBatch[0]?.stage_name || null,
-          funil: wppModalBatch[0]?.funil || null,
-          deal_id: wppModalBatch[0]?.deal_id || null,
+          id_registro: (r.id_registro ?? '').trim() || null,
+          row_index: r.rowIndex ?? null,
+          email_notificar: r.email_notificar || null,
+          email_solicitante: r.email_solicitante || null,
+          stage_name: r.stage_name || null,
+          funil: r.funil || null,
+          deal_id: r.deal_id || null,
           planilha_id: PLANILHA_ID || null,
           nome_aba: PLANILHA_ABA || null,
-        })
+        }))
+        const { error } = await supabase.from('historico_envio_whatsapp').insert(rows)
+        if (error) {
+          console.warn('[SLA lote para número] Histórico não registrado:', error.message)
+          setWppError(`Enviado, mas histórico não gravado: ${error.message}. Verifique Supabase.`)
+        } else {
+          closeWppModal()
+        }
+      } else {
+        closeWppModal()
       }
-      closeWppModal()
     } catch (e) {
       setWppError('Erro de conexão. Verifique se a API e o webhook/Evolution estão configurados.')
     } finally {
@@ -508,6 +558,7 @@ export function LeadsForaSLA() {
     const total = comTelefone.length
     let enviados = 0
     let falhas = 0
+    let historicoFalhas = 0
     for (let i = 0; i < comTelefone.length; i++) {
       const r = comTelefone[i]
       setBatchProgress({ atual: i + 1, total })
@@ -532,7 +583,8 @@ export function LeadsForaSLA() {
         if (res.ok) {
           enviados++
           if (supabase) {
-            await supabase.from('historico_envio_whatsapp').insert({
+            const { error } = await supabase.from('historico_envio_whatsapp').insert({
+              origem: 'sla',
               telefone: telefone.length <= 11 ? `55${telefone}` : telefone,
               mensagem,
               id_registro: (r.id_registro ?? '').trim() || null,
@@ -545,6 +597,12 @@ export function LeadsForaSLA() {
               planilha_id: PLANILHA_ID || null,
               nome_aba: PLANILHA_ABA || null,
             })
+            if (error) {
+              historicoFalhas++
+              console.warn('[SLA lote] Histórico não registrado para', r.id_registro, error.message)
+            }
+          } else {
+            historicoFalhas += 1
           }
         } else falhas++
       } catch {
@@ -555,7 +613,15 @@ export function LeadsForaSLA() {
     setWppSending(false)
     setBatchProgress(null)
     if (falhas > 0) {
-      setWppError(`Enviados: ${enviados}. Falhas: ${falhas}.`)
+      setWppError(`Enviados: ${enviados}. Falhas no envio: ${falhas}.`)
+    } else if (!supabase && enviados > 0) {
+      setWppError(
+        `Enviados: ${enviados}. O histórico não foi gravado: Supabase não configurado. Adicione VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.local (veja docs/INTEGRACAO-SUPABASE.md).`
+      )
+    } else if (historicoFalhas > 0) {
+      setWppError(
+        `Enviados: ${enviados}. Histórico não registrado para ${historicoFalhas} envio(s). Verifique as políticas da tabela historico_envio_whatsapp no Supabase (docs/SUPABASE-HISTORICO-WHATSAPP.md).`
+      )
     } else {
       closeWppModal()
     }
@@ -660,6 +726,23 @@ export function LeadsForaSLA() {
               </p>
               <p className="text-xs text-gray-500 mt-1">em andamento</p>
             </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              <span className="text-sm text-gray-700">
+                Histórico de <strong>envios no WhatsApp</strong> e de <strong>atualização no RD (SLA)</strong>
+              </span>
+            </div>
+            <Link
+              to="/validacao"
+              state={{ openHistoricoWpp: true, historicoFiltro: 'sla' as const }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 text-slate-800 font-medium text-sm hover:bg-slate-200 transition-colors"
+            >
+              <History className="h-4 w-4" />
+              Ver histórico completo
+            </Link>
           </div>
 
           {slaPorSolicitante.length > 0 && (

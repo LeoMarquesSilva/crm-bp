@@ -1,11 +1,34 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Alert } from '@/components/ui/Alert'
-import { CheckCircle2, Loader2, Info, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Loader2, Info, AlertCircle, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getSolicitanteOptions } from '@/data/teamAvatars'
+
+function onlyDigits(s: string): string {
+  return (s || '').replace(/\D/g, '')
+}
+
+function maskCPF(value: string): string {
+  const d = onlyDigits(value).slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
+function maskCNPJ(value: string): string {
+  const d = onlyDigits(value).slice(0, 14)
+  if (d.length <= 2) return d
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+}
 
 interface RazaoSocialCNPJ {
   razao_social: string
   cnpj: string
+  tipo_doc: 'cpf' | 'cnpj'
 }
 
 interface LeadFormProps {
@@ -20,8 +43,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     due_diligence: '',
     prazo_reuniao_due: '',
     horario_due: '',
-    razao_social_cnpj: [{ razao_social: '', cnpj: '' }] as RazaoSocialCNPJ[],
-    areas_analise: [] as string[],
+    razao_social_cnpj: [{ razao_social: '', cnpj: '', tipo_doc: 'cnpj' as const }] as RazaoSocialCNPJ[],
     local_reuniao: '',
     data_reuniao: '',
     horario_reuniao: '',
@@ -29,6 +51,28 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     indicacao: '',
     nome_indicacao: '',
   })
+
+  const solicitanteOptions = getSolicitanteOptions()
+  const [solicitanteDropdownOpen, setSolicitanteDropdownOpen] = useState(false)
+  const solicitanteDropdownRef = useRef<HTMLDivElement>(null)
+  const selectedSolicitante = formData.email ? solicitanteOptions.find((o) => o.emailBismarchi === formData.email) : null
+
+  const [cadastradoPorDropdownOpen, setCadastradoPorDropdownOpen] = useState(false)
+  const cadastradoPorDropdownRef = useRef<HTMLDivElement>(null)
+  const selectedCadastradoPor = formData.cadastrado_por ? solicitanteOptions.find((o) => o.emailBismarchi === formData.cadastrado_por) : null
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (solicitanteDropdownRef.current && !solicitanteDropdownRef.current.contains(e.target as Node)) {
+        setSolicitanteDropdownOpen(false)
+      }
+      if (cadastradoPorDropdownRef.current && !cadastradoPorDropdownRef.current.contains(e.target as Node)) {
+        setCadastradoPorDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'warning' | 'error'>('success')
@@ -84,39 +128,64 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target
-    const target = e.target as HTMLInputElement
-
-    if (type === 'checkbox') {
-      if (name === 'areas_analise') {
-        setFormData((prev) => ({
-          ...prev,
-          areas_analise: target.checked
-            ? [...prev.areas_analise, value]
-            : prev.areas_analise.filter((area) => area !== value),
-        }))
-      }
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }))
-    }
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
   }
 
-  const handleRazaoSocialChange = (index: number, field: keyof RazaoSocialCNPJ, value: string) => {
+  const handleSolicitanteSelect = (option: (typeof solicitanteOptions)[0]) => {
+    setFormData((prev) => ({
+      ...prev,
+      solicitante: option.name,
+      email: option.emailBismarchi,
+    }))
+    setSolicitanteDropdownOpen(false)
+  }
+
+  const handleCadastradoPorSelect = (option: (typeof solicitanteOptions)[0]) => {
+    setFormData((prev) => ({
+      ...prev,
+      cadastrado_por: option.emailBismarchi,
+    }))
+    setCadastradoPorDropdownOpen(false)
+  }
+
+  const handleRazaoSocialChange = (index: number, field: 'razao_social' | 'cnpj', value: string) => {
     const newRazaoSocial = [...formData.razao_social_cnpj]
-    newRazaoSocial[index][field] = value
+    if (field === 'razao_social') {
+      newRazaoSocial[index].razao_social = value.toUpperCase()
+    } else {
+      newRazaoSocial[index].cnpj = value
+    }
     setFormData((prev) => ({
       ...prev,
       razao_social_cnpj: newRazaoSocial,
     }))
   }
 
+  const setTipoDoc = (index: number, tipo: 'cpf' | 'cnpj') => {
+    const newRazaoSocial = [...formData.razao_social_cnpj]
+    newRazaoSocial[index].tipo_doc = tipo
+    const raw = onlyDigits(newRazaoSocial[index].cnpj)
+    newRazaoSocial[index].cnpj = tipo === 'cpf' ? maskCPF(raw) : maskCNPJ(raw)
+    setFormData((prev) => ({
+      ...prev,
+      razao_social_cnpj: newRazaoSocial,
+    }))
+  }
+
+  const handleCnpjCpfChange = (index: number, value: string) => {
+    const item = formData.razao_social_cnpj[index]
+    const masked = item.tipo_doc === 'cpf' ? maskCPF(value) : maskCNPJ(value)
+    handleRazaoSocialChange(index, 'cnpj', masked)
+  }
+
   const addRazaoSocial = () => {
     setFormData((prev) => ({
       ...prev,
-      razao_social_cnpj: [...prev.razao_social_cnpj, { razao_social: '', cnpj: '' }],
+      razao_social_cnpj: [...prev.razao_social_cnpj, { razao_social: '', cnpj: '', tipo_doc: 'cnpj' }],
     }))
   }
 
@@ -136,21 +205,32 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     setMessage('')
 
     try {
+      // Payload alinhado ao N8N: Webhook → Limitar 255 → Negociação com/sem Due → RD Station + e-mails
+      const dataReuniaoFormatada = formData.data_reuniao ? formatarDataBrasileira(formData.data_reuniao) : 'A definir'
+      const horarioReuniao = formData.horario_reuniao || 'A definir'
+      const dataHorarioReuniao =
+        formData.data_reuniao && formData.horario_reuniao
+          ? `${formatarDataBrasileira(formData.data_reuniao)} ${formData.horario_reuniao}`
+          : 'A definir'
+
       const dadosParaEnvio = {
         id: Date.now().toString(),
         solicitante: formData.solicitante,
         email: formData.email,
         cadastrado_por: formData.cadastrado_por,
-        razao_social_cnpj: formData.razao_social_cnpj,
+        razao_social_cnpj: formData.razao_social_cnpj.map((item) => ({
+          razao_social: item.razao_social,
+          cnpj: item.cnpj,
+        })),
         prazo_reuniao_due: formData.prazo_reuniao_due ? formatarDataBrasileira(formData.prazo_reuniao_due) : 'A definir',
         horario_due: formData.horario_due || 'A definir',
-        data_reuniao: formData.data_reuniao ? formatarDataBrasileira(formData.data_reuniao) : 'A definir',
-        horario_reuniao: formData.horario_reuniao || 'A definir',
+        data_reuniao: dataReuniaoFormatada,
+        horario_reuniao: horarioReuniao,
+        data_horario_reuniao: dataHorarioReuniao,
         local_reuniao: formData.local_reuniao,
         indicacao: formData.indicacao,
         nome_indicacao: formData.nome_indicacao,
         tipo_de_lead: formData.tipo_de_lead,
-        areas_analise: formData.areas_analise,
         due_diligence: formData.due_diligence,
         timestamp: new Date().toLocaleString('pt-BR'),
         origem: 'Bismarchi | Pires - Manual CRM',
@@ -181,8 +261,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
         due_diligence: '',
         prazo_reuniao_due: '',
         horario_due: '',
-        razao_social_cnpj: [{ razao_social: '', cnpj: '' }],
-        areas_analise: [],
+        razao_social_cnpj: [{ razao_social: '', cnpj: '', tipo_doc: 'cnpj' }],
         local_reuniao: '',
         data_reuniao: '',
         horario_reuniao: '',
@@ -232,19 +311,56 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="relative" ref={solicitanteDropdownRef}>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Solicitante <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                name="solicitante"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]"
-                value={formData.solicitante}
-                onChange={handleInputChange}
-                placeholder="Nome completo"
-                required
-              />
+              <input type="hidden" name="solicitante_email" value={formData.email} required />
+              <button
+                type="button"
+                onClick={() => setSolicitanteDropdownOpen((o) => !o)}
+                className={cn(
+                  'w-full px-4 py-2.5 border rounded-lg text-left flex items-center gap-3 transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]',
+                  'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                  'border-gray-300 bg-white hover:bg-gray-50',
+                  !selectedSolicitante && 'text-gray-500'
+                )}
+              >
+                {selectedSolicitante ? (
+                  <>
+                    <img
+                      src={selectedSolicitante.avatar}
+                      alt=""
+                      className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    />
+                    <span className="flex-1 font-medium text-gray-800">{selectedSolicitante.name}</span>
+                  </>
+                ) : (
+                  <span className="flex-1">Selecione o solicitante</span>
+                )}
+                <ChevronDown
+                  className={cn('h-4 w-4 text-gray-500 flex-shrink-0 transition-transform', solicitanteDropdownOpen && 'rotate-180')}
+                />
+              </button>
+              {solicitanteDropdownOpen && (
+                <ul className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+                  {solicitanteOptions.map((opt) => (
+                    <li key={opt.email}>
+                      <button
+                        type="button"
+                        onClick={() => handleSolicitanteSelect(opt)}
+                        className={cn(
+                          'w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-primary/5 transition-colors',
+                          opt.emailBismarchi === formData.email && 'bg-primary/5 text-primary'
+                        )}
+                      >
+                        <img src={opt.avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                        <span className="font-medium text-gray-800">{opt.name}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div>
@@ -254,28 +370,68 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
               <input
                 type="email"
                 name="email"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)] bg-gray-50"
                 value={formData.email}
                 onChange={handleInputChange}
-                placeholder="exemplo@email.com"
+                placeholder="Preenchido ao selecionar o solicitante"
                 required
+                readOnly
               />
             </div>
           </div>
 
-          <div>
+          <div className="relative" ref={cadastradoPorDropdownRef}>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Cadastro realizado por (e-mail) <span className="text-red-500">*</span>
+              Cadastro realizado por: <span className="text-red-500">*</span>
             </label>
-            <input
-              type="email"
-              name="cadastrado_por"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]"
-              value={formData.cadastrado_por}
-              onChange={handleInputChange}
-              placeholder="seu.email@bismarchipires.com.br"
-              required
-            />
+            <input type="hidden" name="cadastrado_por" value={formData.cadastrado_por} required />
+            <button
+              type="button"
+              onClick={() => setCadastradoPorDropdownOpen((o) => !o)}
+              className={cn(
+                'w-full px-4 py-2.5 border rounded-lg text-left flex items-center gap-3 transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]',
+                'focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
+                'border-gray-300 bg-white hover:bg-gray-50',
+                !selectedCadastradoPor && 'text-gray-500'
+              )}
+            >
+              {selectedCadastradoPor ? (
+                <>
+                  <img
+                    src={selectedCadastradoPor.avatar}
+                    alt=""
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                  />
+                  <span className="flex-1 font-medium text-gray-800">{selectedCadastradoPor.name}</span>
+                  <span className="text-xs text-gray-500 truncate max-w-[140px]">{selectedCadastradoPor.emailBismarchi}</span>
+                </>
+              ) : (
+                <span className="flex-1">Selecione quem realizou o cadastro</span>
+              )}
+              <ChevronDown
+                className={cn('h-4 w-4 text-gray-500 flex-shrink-0 transition-transform', cadastradoPorDropdownOpen && 'rotate-180')}
+              />
+            </button>
+            {cadastradoPorDropdownOpen && (
+              <ul className="absolute z-10 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg py-1">
+                {solicitanteOptions.map((opt) => (
+                  <li key={opt.email}>
+                    <button
+                      type="button"
+                      onClick={() => handleCadastradoPorSelect(opt)}
+                      className={cn(
+                        'w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-primary/5 transition-colors',
+                        opt.emailBismarchi === formData.cadastrado_por && 'bg-primary/5 text-primary'
+                      )}
+                    >
+                      <img src={opt.avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                      <span className="font-medium text-gray-800">{opt.name}</span>
+                      <span className="text-xs text-gray-500">{opt.emailBismarchi}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -374,21 +530,48 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
                     </label>
                     <input
                       type="text"
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)] uppercase"
                       value={item.razao_social}
                       onChange={(e) => handleRazaoSocialChange(index, 'razao_social', e.target.value)}
-                      placeholder="Digite a razão social ou nome completo"
+                      placeholder="DIGITE EM MAIÚSCULO"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">CNPJ/CPF</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">CPF ou CNPJ <span className="text-red-500">*</span></label>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setTipoDoc(index, 'cpf')}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-colors',
+                          item.tipo_doc === 'cpf'
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white border-gray-300 text-gray-600 hover:border-primary/50'
+                        )}
+                      >
+                        CPF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTipoDoc(index, 'cnpj')}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-colors',
+                          item.tipo_doc === 'cnpj'
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white border-gray-300 text-gray-600 hover:border-primary/50'
+                        )}
+                      >
+                        CNPJ
+                      </button>
+                    </div>
                     <input
                       type="text"
+                      inputMode="numeric"
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-[0px_4px_12px_0px_rgba(0,0,0,0.15)]"
                       value={item.cnpj}
-                      onChange={(e) => handleRazaoSocialChange(index, 'cnpj', e.target.value)}
-                      placeholder="00.000.000/0000-00 ou 000.000.000-00"
+                      onChange={(e) => handleCnpjCpfChange(index, e.target.value)}
+                      placeholder={item.tipo_doc === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
                       required
                     />
                   </div>
@@ -414,34 +597,11 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
           </div>
         </div>
 
-        {/* Seção: Áreas e Reunião */}
+        {/* Seção: Reunião */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
             <div className="w-1 h-6 bg-primary rounded-full"></div>
-            <h3 className="font-semibold text-gray-800">Áreas e Reunião</h3>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Áreas Jurídicas Envolvidas <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {['Cível', 'Reestruturação', 'Tributário', 'Trabalhista', 'Distressed Deals', 'Societário e Contratos'].map(
-                (area) => (
-                  <label key={area} className="flex items-center gap-2 cursor-pointer p-3 rounded-lg border-2 border-gray-200 hover:border-primary hover:bg-primary/5 transition-all">
-                    <input
-                      type="checkbox"
-                      name="areas_analise"
-                      value={area}
-                      checked={formData.areas_analise.includes(area)}
-                      onChange={handleInputChange}
-                      className="w-4 h-4 text-primary rounded"
-                    />
-                    <span className="text-sm font-medium">{area}</span>
-                  </label>
-                )
-              )}
-            </div>
+            <h3 className="font-semibold text-gray-800">Reunião</h3>
           </div>
 
           <div>

@@ -91,6 +91,9 @@ const COLUMN_TO_KEY = {
   situacao: 'status',
   status_da_negociacao: 'status',
   status_negociacao: 'status',
+  motivo_de_perda: 'motivo_perda',
+  motivo_perda: 'motivo_perda',
+  motivo_perda_lost: 'motivo_perda',
   // Confecção de proposta (ponto focal / comercial)
   nome_do_ponto_focal_comercial_cp: 'nome_ponto_focal',
   nome_do_ponto_focal: 'nome_ponto_focal',
@@ -108,6 +111,38 @@ const COLUMN_TO_KEY = {
   link_proposta: 'link_da_proposta',
   link_do_contrato: 'link_do_contrato',
   link_contrato: 'link_do_contrato',
+  // Confecção de proposta [CP] – campos adicionais
+  razao_social_cp: 'razao_social_cp',
+  razao_social_cp_cp: 'razao_social_cp',
+  cnpj_cp: 'cnpj_cp',
+  cnpj_cp_cp: 'cnpj_cp',
+  qualificacao_completa: 'qualificacao_completa',
+  qualificacao_completa_endereco_cep: 'qualificacao_completa',
+  areas_objeto_do_contrato_cp: 'areas_objeto_contrato_cp',
+  areas_objeto_contrato_cp: 'areas_objeto_contrato_cp',
+  areas_objeto_contrato: 'areas_objeto_contrato_cp',
+  areas_cp: 'areas_objeto_contrato_cp',
+  realizou_due_diligence: 'realizou_due_diligence',
+  realizou_due_diligence_cp: 'realizou_due_diligence',
+  gestor_do_contrato_cp: 'gestor_contrato_cp',
+  gestor_contrato_cp: 'gestor_contrato_cp',
+  gestor_do_contrato: 'gestor_contrato_cp',
+  gestor_contrato: 'gestor_contrato_cp',
+  captador_cp: 'captador_cp',
+  captador: 'captador_cp',
+  tributacao_cp: 'tributacao_cp',
+  tributacao: 'tributacao_cp',
+  prazo_para_entrega_cp: 'prazo_entrega_cp',
+  prazo_entrega_cp: 'prazo_entrega_cp',
+  prazo_para_entrega: 'prazo_entrega_cp',
+  data_do_primeiro_vencimento_cp: 'data_primeiro_vencimento_cp',
+  data_primeiro_vencimento_cp: 'data_primeiro_vencimento_cp',
+  data_do_primeiro_vencimento: 'data_primeiro_vencimento_cp',
+  data_primeiro_vencimento: 'data_primeiro_vencimento_cp',
+  informacoes_adicionais_cp: 'informacoes_adicionais_cp',
+  informacoes_adicionais: 'informacoes_adicionais_cp',
+  demais_razoes_sociais_cp: 'demais_razoes_sociais_cp',
+  demais_razoes_sociais: 'demais_razoes_sociais_cp',
   // Confecção de contrato [CC]
   tipo_de_pagamento_cc: 'tipo_pagamento_cc',
   tipo_pagamento_cc: 'tipo_pagamento_cc',
@@ -152,6 +187,22 @@ const COLUMN_TO_KEY = {
   prazo_para_confecao_do_contrato_cc: 'prazo_contrato_cc',
   prazo_confecao_contrato_cc: 'prazo_contrato_cc',
   prazo_contrato_cc: 'prazo_contrato_cc',
+  // Confecção de contrato [CC] – campos do manual ainda sem validação
+  tipo_instrumento_cc: 'tipo_instrumento_cc',
+  tipo_de_instrumento_cc: 'tipo_instrumento_cc',
+  tipo_instrumento: 'tipo_instrumento_cc',
+  limitacao_processos_cc: 'limitacao_processos_cc',
+  limitacao_processos: 'limitacao_processos_cc',
+  limitacao_horas_cc: 'limitacao_horas_cc',
+  limitacao_horas_consultivo_cc: 'limitacao_horas_cc',
+  limitacao_horas: 'limitacao_horas_cc',
+  responsavel_elaboracao_cc: 'responsavel_elaboracao_cc',
+  responsavel_elaboracao: 'responsavel_elaboracao_cc',
+  responsavel_pela_elaboracao: 'responsavel_elaboracao_cc',
+  // Contrato Assinado [CA]
+  data_assinatura: 'data_assinatura_contrato',
+  data_de_assinatura_do_contrato: 'data_assinatura_contrato',
+  data_assinatura_contrato: 'data_assinatura_contrato',
   // --- Colunas do CRM (mapeamento direto) ---
   // Identificação / cadastro lead
   deal_id: 'deal_id',
@@ -182,6 +233,136 @@ const COLUMN_TO_KEY = {
   rateio_porcentagem_tributario_financeiro: 'rateio_tributario_cc',
   rateio_porcentagem_contratos_financeiro: 'rateio_contratos_cc',
   rateio_porcentagem_add_financeiro: 'rateio_add_cc',
+  // Colunas da planilha (nomes exatos após normalização)
+  date_create: 'created_at',
+  date_update: 'updated_at',
+  razao_social_financeiro: 'razao_social_cp',
+  cpf_cnpj_financeiro: 'cnpj_cp',
+  // Variáveis do payload N8N/CRM (label → variável no script; aqui: nome da coluna/variável → chave validação)
+  areas_comparecimento: 'areas_comparecimento',
+  link_arquivo_due: 'link_arquivo_due',
+  valores: 'valores',
+  exito: 'exito',
+  status_cadastro: 'status_cadastro',
+  razao_social_principal_cadastro: 'razao_social_principal_cadastro',
+  cnpj_cpf_cadastro: 'cnpj_cpf_cadastro',
+  endereco_cadastro: 'endereco_cadastro',
+  qualificacao_socios_cadastro: 'qualificacao_socios_cadastro',
+  consulta_auto_cadastro: 'consulta_auto_cadastro',
+  info_adicionais_cadastro: 'info_adicionais_cadastro',
+  id_sharepoint: 'id_sharepoint',
+  vigencia_contrato_financeiro: 'vigencia_contrato_financeiro',
+  primeiro_faturamento_financeiro: 'primeiro_faturamento_financeiro',
+  responsavel_cliente_financeiro: 'responsavel_cliente_financeiro',
+  posicao_responsavel_financeiro: 'posicao_responsavel_financeiro',
+  email_responsavel_financeiro: 'email_responsavel_financeiro',
+  telefone_responsavel_financeiro: 'telefone_responsavel_financeiro',
+  repasse_acordado_financeiro: 'repasse_acordado_financeiro',
+  rateio_valor_insolvencia_financeiro: 'rateio_valor_insolvencia_financeiro',
+  rateio_valor_civel_financeiro: 'rateio_valor_civel_financeiro',
+  rateio_valor_trabalhista_financeiro: 'rateio_valor_trabalhista_financeiro',
+  rateio_valor_tributario_financeiro: 'rateio_valor_tributario_financeiro',
+  rateio_valor_contratos_financeiro: 'rateio_valor_contratos_financeiro',
+  rateio_valor_add_financeiro: 'rateio_valor_add_financeiro',
+  indice_reajuste_financeiro: 'indice_reajuste_financeiro',
+  periodicidade_reajuste_financeiro: 'periodicidade_reajuste_financeiro',
+  observacoes_financeiro: 'observacoes_financeiro',
+  id_sharepoint_financeiro: 'id_sharepoint_financeiro',
+  status_financeiro: 'status_financeiro',
+}
+
+/**
+ * Nome exato do campo no CRM (deal_custom_fields) para cada variável.
+ * Usar em getFieldValue(fields, label) no N8N: result[variable] = getFieldValue(fields, CRM_FIELD_LABELS[variable]).
+ * Fonte única para alinhar script N8N e validação.
+ */
+const CRM_FIELD_LABELS = {
+  solicitante: 'Solicitante',
+  cadastrado_por: 'Cadastro realizado por',
+  razao_social: 'Razão Social [CP]',
+  cnpj: 'CNPJ [CP]',
+  demais_razoes_sociais: 'Demais Razões Sociais',
+  areas_analise: 'Áreas que serão objeto de análise',
+  prazo_entrega_data: 'Prazo de Entrega Due [DATA]',
+  prazo_entrega_hora: 'Prazo de Entrega Due [HORÁRIO]',
+  local_reuniao: 'Local da Reunião',
+  data_reuniao: 'Data Reunião',
+  horario_reuniao: 'Horário da Reunião',
+  email_solicitante: 'E-mail do Solicitante',
+  havera_due_diligence: 'Haverá Due Diligence?',
+  areas_comparecimento: 'Áreas para comparecimento na reunião',
+  indicacao: 'Indicação',
+  nome_indicacao: 'Nome da Indicação',
+  tipo_instrumento: 'Tipo de Instrumento [CC]',
+  limitacao_processos: 'Limitação de processos e valor adicional por processo [CC]',
+  limitacao_horas: 'Limitação de horas (Consultivo) [CC]',
+  exito: 'Êxito (Descrever áreas abrangidas e percentuais) [CC]',
+  valores: 'Valores (descrever tipo de pagamento, valores e data de vencimento) [CC]',
+  tipo_pagamento: 'Tipo de pagamento [CC]',
+  link_arquivo_due: 'Link do Arquivo DUE',
+  prazo_entrega_contrato: 'Prazo para Confecção do Contrato [CC]',
+  data_assinatura_contrato: 'Data de assinatura do contrato [CA]',
+  link_contrato: 'Link Contrato [CE]',
+  responsavel_elaboracao: 'Responsável pela Elaboração [CE]',
+  areas_cp: 'Áreas Objeto do contrato [CP]',
+  gestor_contrato: 'Gestor do Contrato [CP]',
+  captador: 'Captador [ CP]',
+  tributacao: 'Tributação [CP]',
+  informacoes_adicionais: 'Informações adicionais [CP]',
+  data_primeiro_vencimento: 'Data do primeiro vencimento [CP]',
+  prazo_entrega_cp: 'Prazo para entrega (mínimo de 2 dias úteis - sinalizar exceções e motivos) [CP]',
+  qualificacao_completa: 'Qualificação completa (endereço, CEP, endereço eletrônico etc.) [CP]',
+  realizou_due_diligence: 'Realizou Due Diligence? [CP]',
+  nome_ponto_focal: 'Nome do ponto focal / Comercial [CP]',
+  email_ponto_focal: 'E-mail do ponto focal / Comercial [CP]',
+  telefone_ponto_focal: 'Telefone do ponto focal / Comercial [CP]',
+  link_proposta: 'Link da Proposta [CP]',
+  status_cadastro: 'STATUS [CADASTRO]',
+  razao_social_principal_cadastro: 'Razão Social Cliente Principal [CADASTRO]',
+  cnpj_cpf_cadastro: 'CNPJ / CPF Cliente Principal [CADASTRO]',
+  endereco_cadastro: 'Endereço Cliente Principal [CADASTRO]',
+  escopo_contratual_cadastro: 'Objeto do Contrato [CC]',
+  qualificacao_socios_cadastro: 'Qualificação dos Sócios (Nome, Posição (Sócio, consultor familiar, diretor etc), CPF) [CADASTRO]',
+  consulta_auto_cadastro: 'Cadastrar na consulta automatizada de novas demandas? (Favor informar os nomes, CNPJS de TODOS abaixo) [CADASTRO]',
+  info_adicionais_cadastro: 'Informações Adicionais [CADASTRO]',
+  id_sharepoint: 'ID SHAREPOINT',
+  razao_social_financeiro: 'Razão Social para Faturamento [FINANCEIRO]',
+  cpf_cnpj_financeiro: 'CPF/CNPJ para Faturamento [FINANCEIRO]',
+  vigencia_contrato_financeiro: 'Início da Vigência do Contrato [FINANCEIRO]',
+  primeiro_faturamento_financeiro: 'Primeiro Faturamento [FINANCEIRO]',
+  responsavel_cliente_financeiro: 'Responsável Financeiro do Cliente [FINANCEIRO]',
+  posicao_responsavel_financeiro: 'Posição do Responsável (Sócio, consultor, financeiro...) [FINANCEIRO]',
+  email_responsavel_financeiro: 'E-mail Responsável Financeiro do Cliente [FINANCEIRO]',
+  telefone_responsavel_financeiro: 'Telefone Responsável Financeiro do Cliente [FINANCEIRO]',
+  repasse_acordado_financeiro: 'Repasse acordado % [FINANCEIRO]',
+  mensal_fixo_financeiro: 'Mensal – Fixo Valor R$ [CC]',
+  mensal_preco_fechado_financeiro: 'Mensal - Preço Fechado Parcelado - Valor R$ [CC]',
+  mensal_escalonado_financeiro: 'Mensal – Escalonado - Valor R$ [CC]',
+  mensal_variavel_financeiro: 'Mensal – Variável - Valor R$ [CC]',
+  mensal_condicionado_financeiro: 'Mensal – Condicionado - Valor R$ [CC]',
+  spot_financeiro: 'SPOT - Valor R$ [CC]',
+  spot_manutencao_financeiro: 'SPOT com Manutenção - Valor R$ [CC]',
+  spot_parcelado_financeiro: 'SPOT – Parcelado - Valor R$ [CC]',
+  spot_parcelado_manutencao_financeiro: 'SPOT - Parcelado com manutenção - Valor R$ [CC]',
+  spot_condicionado_financeiro: 'SPOT – Condicionado - Valor R$ [CC]',
+  exito_financeiro: 'Êxito - Valor R$ [CC]',
+  rateio_valor_insolvencia_financeiro: 'RATEIO - VALOR R$ (Reestruturação e Insolvência) - [FINANCEIRO]',
+  rateio_porcentagem_insolvencia_financeiro: 'RATEIO - PORCENTAGEM % (Reestruturação e Insolvência) - [CC]',
+  rateio_valor_civel_financeiro: 'RATEIO - VALOR R$ (Cível) - [FINANCEIRO]',
+  rateio_porcentagem_civel_financeiro: 'RATEIO - PORCENTAGEM % (Cível) - [CC]',
+  rateio_valor_trabalhista_financeiro: 'RATEIO - VALOR R$ (Trabalhista) - [FINANCEIRO]',
+  rateio_porcentagem_trabalhista_financeiro: 'RATEIO - PORCENTAGEM % (Trabalhista) - [CC]',
+  rateio_valor_tributario_financeiro: 'RATEIO - VALOR R$ (Tributário) - [FINANCEIRO]',
+  rateio_porcentagem_tributario_financeiro: 'RATEIO - PORCENTAGEM % (Tributário) - [CC]',
+  rateio_valor_contratos_financeiro: 'RATEIO - VALOR R$ (Contratos / Societário) - [FINANCEIRO]',
+  rateio_porcentagem_contratos_financeiro: 'RATEIO - PORCENTAGEM % (Contratos / Societário) - [CC]',
+  rateio_valor_add_financeiro: 'RATEIO - VALOR R$ (ADD) - [FINANCEIRO]',
+  rateio_porcentagem_add_financeiro: 'RATEIO - PORCENTAGEM % (ADD) - [CC]',
+  indice_reajuste_financeiro: 'Índice de Reajuste - [FINANCEIRO]',
+  periodicidade_reajuste_financeiro: 'Periodicidade do Reajuste - [FINANCEIRO]',
+  observacoes_financeiro: 'Observações - [FINANCEIRO]',
+  id_sharepoint_financeiro: 'ID SHAREPOINT [FINANCEIRO]',
+  status_financeiro: 'STATUS [FINANCEIRO]',
 }
 
 // Stage names que não entram na validação (linhas ignoradas)
@@ -198,7 +379,70 @@ const DISREGARD_STAGE_NAMES = [
   'Reunião Realizada',
   'Contatos',
   'Novos Contatos',
+  'Execução do Serviço',
 ].map((s) => s.trim().toLowerCase())
+
+// --- Configuração: ativar/desativar validações por campo (frontend envia validationConfig no body) ---
+const DEFAULT_VALIDATION_CONFIG = {
+  cadastro_lead: {
+    solicitante: true,
+    email: true,
+    cadastrado_por: true,
+    due_diligence: true,
+    local_reuniao: true,
+    tipo_de_lead: true,
+    razao_social: true,
+    cnpj: true,
+    areas_analise: false, // não considerado mais na validação
+    prazo_reuniao_due: true,
+    horario_due: true,
+    indicacao: true,
+    nome_indicacao: true,
+  },
+  confecao_proposta: {
+    razao_social_cp: true,
+    cnpj_cp: true,
+    qualificacao_completa: true,
+    areas_objeto_contrato_cp: true,
+    realizou_due_diligence: true,
+    gestor_contrato_cp: true,
+    nome_ponto_focal: true,
+    email_ponto_focal: true,
+    telefone_ponto_focal: true,
+    captador_cp: true,
+    tributacao_cp: true,
+    prazo_entrega_cp: true,
+    data_primeiro_vencimento_cp: true,
+    informacoes_adicionais_cp: true,
+    demais_razoes_sociais_cp: true,
+    // link_da_proposta obrigatório apenas na etapa "Proposta enviada"
+  },
+  proposta_enviada: {
+    link_da_proposta: true,
+  },
+  confecao_contrato: {
+    tipo_pagamento_cc: true,
+    objeto_contrato_cc: true,
+    valores_cc: true,
+    rateio_cc: true,
+    prazo_contrato_cc: true,
+    link_do_contrato: true,
+  },
+}
+
+function mergeValidationConfig(userConfig) {
+  if (!userConfig || typeof userConfig !== 'object') return DEFAULT_VALIDATION_CONFIG
+  const merged = {}
+  for (const scope of Object.keys(DEFAULT_VALIDATION_CONFIG)) {
+    merged[scope] = { ...DEFAULT_VALIDATION_CONFIG[scope] }
+    if (userConfig[scope] && typeof userConfig[scope] === 'object') {
+      for (const key of Object.keys(userConfig[scope])) {
+        if (merged[scope][key] !== undefined) merged[scope][key] = !!userConfig[scope][key]
+      }
+    }
+  }
+  return merged
+}
 
 // --- Validação (mesma lógica do manual / scripts/n8n-validacao-etapas.js) ---
 const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -208,20 +452,51 @@ const REGEX_CNPJ_CPF = (v) =>
   typeof v === 'string' &&
   (REGEX_CNPJ.test(v.replace(/\s/g, '')) || REGEX_CPF.test(v.replace(/\s/g, '')))
 
-// Parse de data para SLA: aceita ISO, DD/MM/YYYY, YYYY-MM-DD, etc. Retorna ISO ou null.
+// Parse de data para SLA: aceita ISO, DD/MM/YYYY, YYYY-MM-DD, serial (Google Sheets/Excel). Retorna ISO ou null.
 function parseDateSheet(val) {
-  if (val == null || (typeof val === 'string' && !val.trim())) return null
-  const s = String(val).trim()
+  if (val == null) return null
+  // Google Sheets pode retornar data como número (serial: dias desde 1899-12-30)
+  if (typeof val === 'number' && !Number.isNaN(val)) {
+    const serial = val
+    if (serial >= 1 && serial < 300000) {
+      const ms = (serial - 25569) * 86400 * 1000 // 25569 = serial de 1970-01-01
+      const d = new Date(ms)
+      if (!Number.isNaN(d.getTime())) return d.toISOString()
+    }
+    return null
+  }
+  const s = typeof val === 'string' ? val.trim() : String(val).trim()
   if (!s) return null
+  // String que é só número: tratar como serial (planilha exportada como texto)
+  const asNum = Number(s)
+  if (!Number.isNaN(asNum) && asNum >= 1 && asNum < 300000) {
+    const ms = (asNum - 25569) * 86400 * 1000
+    const d = new Date(ms)
+    if (!Number.isNaN(d.getTime())) return d.toISOString()
+  }
   // ISO ou "YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ss..."
   const iso = Date.parse(s)
   if (!Number.isNaN(iso)) return new Date(iso).toISOString()
-  // DD/MM/YYYY ou DD/MM/YYYY HH:mm
+  // DD/MM/YYYY ou MM/DD/YYYY (planilha/Sheets pode vir em US). Evitar rollover: se 2º número > 12 = MM/DD.
   const ddmmyyyy = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2})[:](\d{2})(?::(\d{2}))?)?/
   const m = s.match(ddmmyyyy)
   if (m) {
-    const [, d, mo, y, h, min, sec] = m.map(Number)
-    const d2 = new Date(y, (mo || 1) - 1, d || 1, h || 0, min || 0, sec || 0)
+    const [, n1, n2, y, h, min, sec] = m.map(Number)
+    let day, month
+    if (n2 > 12) {
+      // 2º número > 12 → interpretar como MM/DD/YYYY (ex.: 01/15/2025 = 15 jan 2025)
+      month = (n1 || 1) - 1
+      day = n2 || 1
+    } else if (n1 > 12) {
+      // 1º número > 12 → só pode ser DD/MM (ex.: 27/01/2026)
+      day = n1
+      month = (n2 || 1) - 1
+    } else {
+      // Ambos <= 12: assumir DD/MM/YYYY (padrão BR)
+      day = n1 || 1
+      month = (n2 || 1) - 1
+    }
+    const d2 = new Date(y, month, day, h || 0, min || 0, sec || 0)
     if (!Number.isNaN(d2.getTime())) return d2.toISOString()
   }
   return null
@@ -260,8 +535,8 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Daniel Pressatto Fernandes',
   'Renato Vallim',
   'Wagner Armani',
-  'Jansonn Mendonça',
-  'Leonardo Loureiro',
+  'Jansonn Mendonça Batista',
+  'Leonardo Loureiro Basso',
   'Felipe Camargo',
   'Ligia Lopes',
   'Francisco Zanin',
@@ -311,54 +586,44 @@ function addError(errors, field, message, comoCorrigir, valorAtual) {
   })
 }
 
-function validarCadastroLead(data) {
+function addErrorIfEnabled(errors, config, scope, fieldKey, fieldLabel, message, comoCorrigir, valorAtual) {
+  const scopeConfig = config && config[scope]
+  if (scopeConfig && scopeConfig[fieldKey] === false) return
+  addError(errors, fieldLabel, message, comoCorrigir, valorAtual)
+}
+
+function validarCadastroLead(data, config) {
   const errors = []
   const get = (key) => data[key]
+  const add = (scope, key, label, msg, corrigir, val) =>
+    addErrorIfEnabled(errors, config, scope, key, label, msg, corrigir, val)
 
   const sol = (get('solicitante') ?? '').toString().trim()
   if (vazio(sol))
-    addError(errors, 'Solicitante', 'Campo obrigatório.', 'Use um dos nomes cadastrados (ex.: Gustavo Bismarchi, Ricardo Viscardi Pires).', sol)
+    add('cadastro_lead', 'solicitante', 'Solicitante', 'Campo obrigatório.', 'Use um dos nomes cadastrados (ex.: Gustavo Bismarchi, Ricardo Viscardi Pires).', sol)
   else if (!solicitanteNomeValido(sol))
-    addError(
-      errors,
-      'Solicitante',
-      'Nome incorreto. Deve ser um dos colaboradores cadastrados.',
-      'Preencha exatamente como: ' + SOLICITANTE_NOMES_VALIDOS.join(', '),
-      sol
-    )
+    add('cadastro_lead', 'solicitante', 'Solicitante', 'Nome incorreto. Deve ser um dos colaboradores cadastrados.', 'Preencha exatamente como: ' + SOLICITANTE_NOMES_VALIDOS.join(', '), sol)
 
   const emailVal = (get('email') ?? '').toString().trim()
   if (vazio(emailVal))
-    addError(errors, 'E-mail do Solicitante', 'Campo obrigatório.', 'E-mail corporativo válido.', emailVal)
+    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'Campo obrigatório.', 'E-mail corporativo válido.', emailVal)
   else if (!REGEX_EMAIL.test(emailVal))
-    addError(errors, 'E-mail do Solicitante', 'E-mail inválido.', 'Use e-mail corporativo válido.', emailVal)
+    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'E-mail inválido.', 'Use e-mail corporativo válido.', emailVal)
   else if (emailUsaDominioErrado(emailVal))
-    addError(
-      errors,
-      'E-mail do Solicitante',
-      'Use o domínio @bismarchipires.com.br.',
-      'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).',
-      emailVal
-    )
+    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', emailVal)
 
   const cadPor = (get('cadastrado_por') ?? '').toString().trim()
   if (vazio(cadPor))
-    addError(errors, 'Cadastro realizado por (e-mail)', 'Campo obrigatório.', 'E-mail do colaborador.', cadPor)
+    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'Campo obrigatório.', 'E-mail do colaborador.', cadPor)
   else if (!REGEX_EMAIL.test(cadPor))
-    addError(errors, 'Cadastro realizado por (e-mail)', 'E-mail inválido.', 'Use e-mail corporativo válido.', cadPor)
+    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'E-mail inválido.', 'Use e-mail corporativo válido.', cadPor)
   else if (emailUsaDominioErrado(cadPor))
-    addError(
-      errors,
-      'Cadastro realizado por (e-mail)',
-      'Use o domínio @bismarchipires.com.br.',
-      'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).',
-      cadPor
-    )
+    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', cadPor)
 
   if (vazio(get('due_diligence')))
-    addError(errors, 'Haverá Due Diligence?', 'Campo obrigatório.', 'Selecione "Sim" ou "Não".', get('due_diligence'))
+    add('cadastro_lead', 'due_diligence', 'Haverá Due Diligence?', 'Campo obrigatório.', 'Selecione "Sim" ou "Não".', get('due_diligence'))
   if (vazio(get('local_reuniao')))
-    addError(errors, 'Local da Reunião', 'Campo obrigatório.', 'Endereço, link ou "A definir".', get('local_reuniao'))
+    add('cadastro_lead', 'local_reuniao', 'Local da Reunião', 'Campo obrigatório.', 'Endereço, link ou "A definir".', get('local_reuniao'))
 
   // Tipo de Lead: pode vir em tipo_de_lead, tipo_lead, tipo_do_lead ou coluna cujo nome contenha "tipo" e "lead"
   let tipoLeadVal = get('tipo_de_lead') ?? get('tipo_lead') ?? get('tipo_do_lead')
@@ -369,7 +634,7 @@ function validarCadastroLead(data) {
     if (tipoLeadKey) tipoLeadVal = data[tipoLeadKey]
   }
   if (vazio(tipoLeadVal))
-    addError(errors, 'Tipo de Lead', 'Campo obrigatório.', 'Indicação | Lead Ativa | Lead Digital | Lead Passiva', tipoLeadVal)
+    add('cadastro_lead', 'tipo_de_lead', 'Tipo de Lead', 'Campo obrigatório.', 'Indicação | Lead Ativa | Lead Digital | Lead Passiva', tipoLeadVal)
 
   let temRazaoCnpj = false
   const rsc = get('razao_social_cnpj')
@@ -386,108 +651,141 @@ function validarCadastroLead(data) {
   const cnpjVal = get('cnpj') ?? get('cnpj_cpf')
   if (!temRazaoCnpj) {
     if (vazio(rs))
-      addError(errors, 'Razão Social / Nome Completo', 'Campo obrigatório.', 'Para PJ use CAIXA ALTA.', rs)
+      add('cadastro_lead', 'razao_social', 'Razão Social / Nome Completo', 'Campo obrigatório.', 'Para PJ use CAIXA ALTA.', rs)
     if (vazio(cnpjVal))
-      addError(errors, 'CNPJ/CPF', 'Campo obrigatório.', 'Informe CNPJ ou CPF.', cnpjVal)
+      add('cadastro_lead', 'cnpj', 'CNPJ/CPF', 'Campo obrigatório.', 'Informe CNPJ ou CPF.', cnpjVal)
     // Formatação CNPJ/CPF desconsiderada: não validar máscara
   }
 
-  // Áreas Envolvidas: única fonte é a coluna areas_analise. Pode vir como array ["Cível","Tributário"] ou string. Apenas verificar se foi preenchido.
-  const areas = get('areas_analise')
-  const areasPreenchido = (val) => {
-    if (val == null) return false
-    if (Array.isArray(val)) return val.length > 0 && val.some((x) => x != null && String(x).trim() !== '')
-    const s = typeof val === 'string' ? val.trim() : String(val).trim()
-    if (s === '' || s.toLowerCase() === 'a definir') return false
-    if (s.startsWith('[')) {
-      try {
-        const arr = JSON.parse(s)
-        return Array.isArray(arr) && arr.length > 0
-      } catch {
-        return true
-      }
-    }
-    return true
-  }
-  if (!areasPreenchido(areas))
-    addError(errors, 'Áreas Envolvidas', 'Campo obrigatório.', 'Selecione ao menos uma área.', areas)
+  // Áreas Envolvidas: não considerado mais na validação (removido conforme configuração)
 
   if (String(get('due_diligence')).trim().toLowerCase() === 'sim') {
-    if (vazio(get('prazo_reuniao_due')) || String(get('prazo_reuniao_due')).toLowerCase() === 'a definir')
-      addError(errors, 'Prazo de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Informe a data de entrega.', get('prazo_reuniao_due'))
-    if (vazio(get('horario_due')) || String(get('horario_due')).toLowerCase() === 'a definir')
-      addError(errors, 'Horário de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Informe o horário de entrega.', get('horario_due'))
+    // Prazo de Entrega da Due: "A definir" é aceito; só exige quando estiver vazio
+    if (vazio(get('prazo_reuniao_due')))
+      add('cadastro_lead', 'prazo_reuniao_due', 'Prazo de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Informe a data de entrega ou "A definir".', get('prazo_reuniao_due'))
+    // "A definir" é aceito quando a pessoa ainda não tem o horário
+    const horarioDue = String(get('horario_due') ?? '').trim()
+    if (!horarioDue)
+      add('cadastro_lead', 'horario_due', 'Horário de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Informe o horário ou use "A definir" se ainda não tiver.', get('horario_due'))
   }
 
   const tipoLead = String(tipoLeadVal ?? '').trim().toLowerCase()
   if (tipoLead === 'indicacao' || tipoLead === 'indicação') {
     if (vazio(get('indicacao')))
-      addError(errors, 'Indicação', 'Obrigatório quando Tipo de Lead = Indicação.', 'Fundo | Consultor | Cliente | etc.', get('indicacao'))
+      add('cadastro_lead', 'indicacao', 'Indicação', 'Obrigatório quando Tipo de Lead = Indicação.', 'Fundo | Consultor | Cliente | etc.', get('indicacao'))
     if (vazio(get('nome_indicacao')))
-      addError(errors, 'Nome da Indicação', 'Obrigatório quando Tipo de Lead = Indicação.', 'Nome de quem indicou.', get('nome_indicacao'))
+      add('cadastro_lead', 'nome_indicacao', 'Nome da Indicação', 'Obrigatório quando Tipo de Lead = Indicação.', 'Nome de quem indicou.', get('nome_indicacao'))
   }
 
   return { valid: errors.length === 0, errors }
 }
 
-// Confecção de proposta (Funil de vendas): Nome completo, e-mail e telefone do ponto focal/comercial
-function validarConfecaoProposta(data) {
+// Confecção de proposta (Funil de vendas): todos os campos [CP] conforme manual
+function validarConfecaoProposta(data, config) {
   const errors = []
   const get = (key) => data[key]
+  const add = (scope, key, label, msg, corrigir, val) =>
+    addErrorIfEnabled(errors, config, scope, key, label, msg, corrigir, val)
+
+  const scope = 'confecao_proposta'
+
+  // Razão Social [CP] – MAIÚSCULO para PJ
+  const razaoSocialCp = (get('razao_social_completa') ?? get('razao_social') ?? '').toString().trim()
+  if (vazio(razaoSocialCp))
+    add(scope, 'razao_social_cp', 'Razão Social [CP]', 'Campo obrigatório.', 'Nome jurídico em MAIÚSCULO. Ex.: ALFA SOLUÇÕES LTDA', razaoSocialCp)
+
+  // CNPJ [CP] – formato Receita Federal
+  const cnpjCp = (get('cnpj') ?? get('cnpj') ?? '').toString().trim()
+  if (vazio(cnpjCp))
+    add(scope, 'cnpj_cp', 'CNPJ [CP]', 'Campo obrigatório.', 'CNPJ ou CPF no formato da Receita Federal.', cnpjCp)
+
+  // Qualificação completa (endereço, CEP, e-mail etc.) – aceita "N/A" se não aplicável
+  const qualificacao = (get('qualificacao_completa') ?? '').toString().trim()
+  if (vazio(qualificacao))
+    add(scope, 'qualificacao_completa', 'Qualificação completa [CP]', 'Campo obrigatório.', 'Endereço completo, CEP e e-mail corporativo. Ou "N/A".', qualificacao)
+  else if (qualificacao.toLowerCase() !== 'n/a' && qualificacao.length < 10)
+    add(scope, 'qualificacao_completa', 'Qualificação completa [CP]', 'Dados insuficientes.', 'Preencha endereço, CEP e e-mail ou use "N/A".', qualificacao)
+
+  // Áreas Objeto do contrato [CP]
+  const areasObjeto = get('areas_cp')
+  const areasObjetoPreenchido = (val) => {
+    if (val == null) return false
+    if (Array.isArray(val)) return val.length > 0 && val.some((x) => x != null && String(x).trim() !== '')
+    const s = typeof val === 'string' ? val.trim() : String(val).trim()
+    return s !== '' && s.toLowerCase() !== 'a definir'
+  }
+  if (!areasObjetoPreenchido(areasObjeto))
+    add(scope, 'areas_objeto_contrato_cp', 'Áreas Objeto do contrato [CP]', 'Campo obrigatório.', 'Selecione ao menos uma área (Cível, Tributário, etc.).', areasObjeto)
+
+  // Realizou Due Diligence? [CP]
+  const realizouDue = (get('realizou_due_diligence') ?? '').toString().trim().toLowerCase()
+  if (vazio(realizouDue) || (realizouDue !== 'sim' && realizouDue !== 'nao' && realizouDue !== 'não'))
+    add(scope, 'realizou_due_diligence', 'Realizou Due Diligence? [CP]', 'Campo obrigatório.', 'Selecione "Sim" ou "Não".', get('realizou_due_diligence'))
+
+  // Gestor do Contrato [CP]
+  const gestorContrato = (get('gestor_contrato_cp') ?? '').toString().trim()
+  if (vazio(gestorContrato))
+    add(scope, 'gestor_contrato_cp', 'Gestor do Contrato [CP]', 'Campo obrigatório.', 'Nome completo do colaborador responsável.', gestorContrato)
 
   const nomePf = (get('nome_ponto_focal') ?? '').toString().trim()
   if (vazio(nomePf)) {
-    addError(errors, 'Nome do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'Nome completo. Ex.: Maria Costa Silva', nomePf)
+    add(scope, 'nome_ponto_focal', 'Nome do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'Nome completo. Ex.: Maria Costa Silva', nomePf)
   } else if (!nomeCompletoValido(nomePf)) {
-    addError(
-      errors,
-      'Nome do ponto focal / Comercial [CP]',
-      'Informe nome completo (nome e sobrenome).',
-      'Ex.: Maria Costa Silva — não use apenas o primeiro nome.',
-      nomePf
-    )
+    add(scope, 'nome_ponto_focal', 'Nome do ponto focal / Comercial [CP]', 'Informe nome completo (nome e sobrenome).', 'Ex.: Maria Costa Silva — não use apenas o primeiro nome.', nomePf)
   }
 
   const emailPf = (get('email_ponto_focal') ?? '').toString().trim()
   if (vazio(emailPf)) {
-    addError(errors, 'E-mail do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'E-mail corporativo válido.', emailPf)
+    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'E-mail corporativo válido.', emailPf)
   } else if (!REGEX_EMAIL.test(emailPf)) {
-    addError(errors, 'E-mail do ponto focal / Comercial [CP]', 'E-mail inválido.', 'Use e-mail corporativo ativo.', emailPf)
+    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'E-mail inválido.', 'Use e-mail corporativo ativo.', emailPf)
   } else if (emailUsaDominioErrado(emailPf)) {
-    addError(
-      errors,
-      'E-mail do ponto focal / Comercial [CP]',
-      'Use o domínio @bismarchipires.com.br.',
-      'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).',
-      emailPf
-    )
+    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', emailPf)
   }
 
   const telPf = (get('telefone_ponto_focal') ?? '').toString().trim()
   if (vazio(telPf)) {
-    addError(errors, 'Telefone do ponto focal / Comercial [CP]', 'Campo obrigatório.', '(DD) 9XXXX-XXXX ou (DD) XXXX-XXXX', telPf)
+    add(scope, 'telefone_ponto_focal', 'Telefone do ponto focal / Comercial [CP]', 'Campo obrigatório.', '(DD) 9XXXX-XXXX ou (DD) XXXX-XXXX', telPf)
   } else if (!telefoneValido(telPf)) {
-    addError(
-      errors,
-      'Telefone do ponto focal / Comercial [CP]',
-      'Telefone inválido ou incompleto.',
-      'Inclua DDD e número. Ex.: (11) 91234-5678 ou (11) 1234-5678',
-      telPf
-    )
+    add(scope, 'telefone_ponto_focal', 'Telefone do ponto focal / Comercial [CP]', 'Telefone inválido ou incompleto.', 'Inclua DDD e número. Ex.: (11) 91234-5678 ou (11) 1234-5678', telPf)
   }
 
-  const linkProposta = (get('link_da_proposta') ?? '').toString().trim()
-  if (vazio(linkProposta)) {
-    addError(errors, 'Link da Proposta', 'Campo obrigatório.', 'Link ou caminho para a pasta compartilhada (SharePoint, VIOS, etc.). Ex.: https://bpplaw2.sharepoint.com/...', linkProposta)
-  } else if (!linkPropostaOuContratoValido(linkProposta)) {
-    addError(
-      errors,
-      'Link da Proposta',
-      'Link deve ser diretório oficial (SharePoint, VIOS).',
-      'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...',
-      linkProposta
-    )
-  }
+  // Captador [CP]
+  const captador = (get('captador_cp') ?? '').toString().trim()
+  if (vazio(captador))
+    add(scope, 'captador_cp', 'Captador [CP]', 'Campo obrigatório.', 'Nome ou identificação do colaborador que captou o lead.', captador)
+
+  // Tributação [CP] – Líquido/Englobando Tributos ou Bruto/Sem Tributos
+  const tributacao = (get('tributacao_cp') ?? '').toString().trim().toLowerCase()
+  const tributacaoOk = tributacao.includes('liquido') || tributacao.includes('bruto') || tributacao.includes('englobando') || tributacao.includes('sem tributos')
+  if (vazio(tributacao) || !tributacaoOk)
+    add(scope, 'tributacao_cp', 'Tributação [CP]', 'Campo obrigatório.', 'Líquido/Englobando Tributos ou Bruto/Sem Tributos', get('tributacao_cp'))
+
+  // Prazo para entrega (mínimo 2 dias úteis) [CP] – data DD/MM/AAAA
+  const prazoEntrega = (get('prazo_entrega_cp') ?? '').toString().trim()
+  if (vazio(prazoEntrega))
+    add(scope, 'prazo_entrega_cp', 'Prazo para entrega [CP]', 'Campo obrigatório.', 'Formato DD/MM/AAAA. Mínimo 2 dias úteis.', prazoEntrega)
+  else if (!dataDDMMAAAAValida(prazoEntrega) && !prazoEntrega.toLowerCase().includes('exceção'))
+    add(scope, 'prazo_entrega_cp', 'Prazo para entrega [CP]', 'Data inválida.', 'Formato DD/MM/AAAA. Exceção: informar motivo.', prazoEntrega)
+
+  // Data do primeiro vencimento [CP]
+  const dataPrimeiroVenc = (get('data_primeiro_vencimento_cp') ?? '').toString().trim()
+  if (vazio(dataPrimeiroVenc))
+    add(scope, 'data_primeiro_vencimento_cp', 'Data do primeiro vencimento [CP]', 'Campo obrigatório.', 'Formato DD/MM/AAAA.', dataPrimeiroVenc)
+  else if (!dataDDMMAAAAValida(dataPrimeiroVenc))
+    add(scope, 'data_primeiro_vencimento_cp', 'Data do primeiro vencimento [CP]', 'Data inválida.', 'Formato DD/MM/AAAA. Ex.: 15/07/2025', dataPrimeiroVenc)
+
+  // Informações adicionais [CP] – pode ser N/A
+  const infoAdic = (get('informacoes_adicionais_cp') ?? '').toString().trim()
+  if (vazio(infoAdic))
+    add(scope, 'informacoes_adicionais_cp', 'Informações adicionais [CP]', 'Campo obrigatório.', 'Informe detalhes ou "N/A" se não houver.', infoAdic)
+
+  // Demais Razões Sociais [CP] – pode ser N/A se só uma razão
+  const demaisRazoes = (get('demais_razoes_sociais_cp') ?? '').toString().trim()
+  if (vazio(demaisRazoes))
+    add(scope, 'demais_razoes_sociais_cp', 'Demais Razões Sociais [CP]', 'Campo obrigatório.', 'Liste as demais razões com ; ou "N/A" se houver apenas uma.', demaisRazoes)
+
+  // Link da Proposta: obrigatório apenas na etapa "Proposta enviada" (validado em validarPropostaEnviada)
 
   return { valid: errors.length === 0, errors }
 }
@@ -576,49 +874,34 @@ function dataDDMMAAAAValida(v) {
   return true
 }
 
-function validarConfecaoContrato(data) {
+function validarConfecaoContrato(data, config) {
   const errors = []
   const get = (key) => data[key]
+  const scope = 'confecao_contrato'
+  const add = (scopeKey, fieldKey, label, msg, corrigir, val) =>
+    addErrorIfEnabled(errors, config, scopeKey, fieldKey, label, msg, corrigir, val)
 
   const tipoPag = (get('tipo_pagamento_cc') ?? '').toString().trim()
   if (vazio(tipoPag)) {
-    addError(
-      errors,
-      'Tipo de pagamento [CC]',
-      'Campo obrigatório.',
-      'Mensal (Fixo, Preço Fechado Parcelado, Escalonado, Variável, Condicionado), SPOT (À vista, Parcelado, com Manutenção, Condicionado), Êxito',
-      tipoPag
-    )
+    add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Campo obrigatório.', 'Mensal (Fixo, Preço Fechado Parcelado, Escalonado, Variável, Condicionado), SPOT (À vista, Parcelado, com Manutenção, Condicionado), Êxito', tipoPag)
   } else {
     const norm = tipoPag.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
     const ok = TIPO_PAGAMENTO_OPCOES.some((o) => norm.includes(o.replace(/\s+/g, ' ')))
     if (!ok) {
-      addError(
-        errors,
-        'Tipo de pagamento [CC]',
-        'Opção inválida.',
-        'Selecione: Mensal - Fixo, Mensal - Preço Fechado Parcelado, Mensal - Escalonado, Mensal - Variável, Mensal - Condicionado, SPOT - À vista, SPOT - Parcelado, SPOT com Manutenção, SPOT - Condicionado, Êxito',
-        tipoPag
-      )
+      add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Opção inválida.', 'Selecione: Mensal - Fixo, Mensal - Preço Fechado Parcelado, Mensal - Escalonado, Mensal - Variável, Mensal - Condicionado, SPOT - À vista, SPOT - Parcelado, SPOT com Manutenção, SPOT - Condicionado, Êxito', tipoPag)
     }
   }
 
   const objeto = (get('objeto_contrato_cc') ?? '').toString().trim()
   if (vazio(objeto)) {
-    addError(
-      errors,
-      'Objeto do Contrato [CC]',
-      'Campo obrigatório.',
-      'Descrever de forma clara e completa o objeto do contrato (serviços, escopo, detalhes).',
-      objeto
-    )
+    add(scope, 'objeto_contrato_cc', 'Objeto do Contrato [CC]', 'Campo obrigatório.', 'Descrever de forma clara e completa o objeto do contrato (serviços, escopo, detalhes).', objeto)
   }
 
   for (const key of VALOR_CC_KEYS) {
     const label = VALOR_CC_LABEL[key] || key
     const v = get(key)
     if (v != null && String(v).trim() !== '' && !valorNumericoCCValido(v)) {
-      addError(errors, label, 'Apenas números.', 'Ex.: 1000 ou 1000.00. Se não se aplicar: 0 ou vazio.', v)
+      add(scope, 'valores_cc', label, 'Apenas números.', 'Ex.: 1000 ou 1000.00. Se não se aplicar: 0 ou vazio.', v)
     }
   }
 
@@ -626,34 +909,40 @@ function validarConfecaoContrato(data) {
     const label = RATEIO_CC_LABEL[key] || key
     const v = get(key)
     if (v != null && String(v).trim() !== '' && !rateioPercentValido(v)) {
-      addError(errors, label, 'Formato inválido.', 'Apenas número + %. Ex.: 50% ou 0%', v)
+      add(scope, 'rateio_cc', label, 'Formato inválido.', 'Apenas número + %. Ex.: 50% ou 0%', v)
     }
   }
 
   const prazo = (get('prazo_contrato_cc') ?? '').toString().trim()
   if (vazio(prazo)) {
-    addError(errors, 'Prazo para Confecção do Contrato [CC]', 'Campo obrigatório.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
+    add(scope, 'prazo_contrato_cc', 'Prazo para Confecção do Contrato [CC]', 'Campo obrigatório.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
   } else if (!dataDDMMAAAAValida(prazo)) {
-    addError(errors, 'Prazo para Confecção do Contrato [CC]', 'Data inválida.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
+    add(scope, 'prazo_contrato_cc', 'Prazo para Confecção do Contrato [CC]', 'Data inválida.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
   }
 
   const linkContrato = (get('link_do_contrato') ?? '').toString().trim()
   if (vazio(linkContrato)) {
-    addError(
-      errors,
-      'Link do Contrato',
-      'Campo obrigatório.',
-      'Link para pasta compartilhada (SharePoint, VIOS). Ex.: https://bpplaw2.sharepoint.com/...',
-      linkContrato
-    )
+    add(scope, 'link_do_contrato', 'Link do Contrato', 'Campo obrigatório.', 'Link para pasta compartilhada (SharePoint, VIOS). Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
   } else if (!linkPropostaOuContratoValido(linkContrato)) {
-    addError(
-      errors,
-      'Link do Contrato',
-      'Link deve ser diretório oficial (SharePoint, VIOS).',
-      'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...',
-      linkContrato
-    )
+    add(scope, 'link_do_contrato', 'Link do Contrato', 'Link deve ser diretório oficial (SharePoint, VIOS).', 'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
+// Etapa "Proposta enviada": apenas Link da Proposta é obrigatório (conforme manual)
+function validarPropostaEnviada(data, config) {
+  const errors = []
+  const get = (key) => data[key]
+  const scope = 'proposta_enviada'
+  const add = (scopeKey, fieldKey, label, msg, corrigir, val) =>
+    addErrorIfEnabled(errors, config, scopeKey, fieldKey, label, msg, corrigir, val)
+
+  const linkProposta = (get('link_da_proposta') ?? '').toString().trim()
+  if (vazio(linkProposta)) {
+    add(scope, 'link_da_proposta', 'Link da Proposta', 'Campo obrigatório na etapa Proposta enviada.', 'Link ou caminho para a pasta compartilhada (SharePoint, VIOS, etc.). Ex.: https://bpplaw2.sharepoint.com/...', linkProposta)
+  } else if (!linkPropostaOuContratoValido(linkProposta)) {
+    add(scope, 'link_da_proposta', 'Link da Proposta', 'Link deve ser diretório oficial (SharePoint, VIOS).', 'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...', linkProposta)
   }
 
   return { valid: errors.length === 0, errors }
@@ -672,7 +961,7 @@ function normStageForMatch(s) {
 // Funil de vendas: validar cadastro do lead em todos os stages; Confecção de proposta tem regras extras
 const FUNIL_VENDAS_KEY = 'funil de vendas'
 
-function validarPorStageName(stageName, funil, data) {
+function validarPorStageName(stageName, funil, data, config) {
   const fn = (funil || '').toString().trim().toLowerCase()
   const isFunilVendas = fn.includes(FUNIL_VENDAS_KEY) || fn.includes('vendas')
 
@@ -680,19 +969,27 @@ function validarPorStageName(stageName, funil, data) {
     return { valid: true, errors: [] }
   }
 
-  const result = validarCadastroLead(data)
+  const mergedConfig = mergeValidationConfig(config)
+  const result = validarCadastroLead(data, mergedConfig)
   const sn = normStageForMatch(stageName)
   const isConfecaoProposta = sn.includes('confec') && sn.includes('proposta')
   const isConfecaoContrato = sn.includes('confec') && sn.includes('contrato')
+  const isPropostaEnviada = sn.includes('proposta') && sn.includes('enviada') && !isConfecaoProposta
 
   if (isConfecaoProposta) {
-    const extra = validarConfecaoProposta(data)
+    const extra = validarConfecaoProposta(data, mergedConfig)
+    result.errors = result.errors.concat(extra.errors)
+    result.valid = result.errors.length === 0
+  }
+
+  if (isPropostaEnviada) {
+    const extra = validarPropostaEnviada(data, mergedConfig)
     result.errors = result.errors.concat(extra.errors)
     result.valid = result.errors.length === 0
   }
 
   if (isConfecaoContrato) {
-    const extra = validarConfecaoContrato(data)
+    const extra = validarConfecaoContrato(data, mergedConfig)
     result.errors = result.errors.concat(extra.errors)
     result.valid = result.errors.length === 0
   }
@@ -703,14 +1000,29 @@ function validarPorStageName(stageName, funil, data) {
 // --- Handler Vercel ---
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
+
+  // GET: retorna configuração de validação, mapeamento coluna→chave e labels do CRM por variável
+  if (req.method === 'GET') {
+    const keyToColumns = {}
+    for (const [colNorm, key] of Object.entries(COLUMN_TO_KEY)) {
+      if (!keyToColumns[key]) keyToColumns[key] = []
+      if (!keyToColumns[key].includes(colNorm)) keyToColumns[key].push(colNorm)
+    }
+    return res.status(200).json({
+      defaultValidationConfig: DEFAULT_VALIDATION_CONFIG,
+      columnMapping: keyToColumns,
+      crmFieldLabels: CRM_FIELD_LABELS,
+    })
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' })
 
   try {
-    const { accessToken, spreadsheetId, sheetName, range: rangeParam } = req.body || {}
+    const { accessToken, spreadsheetId, sheetName, range: rangeParam, validationConfig, columnOverrides } = req.body || {}
 
     if (!accessToken || !spreadsheetId) {
       return res.status(400).json({
@@ -741,10 +1053,18 @@ export default async function handler(req, res) {
     }
 
     const headers = rawRows[0].map((c) => (c != null ? String(c).trim() : ''))
+    const effectiveColumnToKey = { ...COLUMN_TO_KEY }
+    if (columnOverrides && typeof columnOverrides === 'object') {
+      for (const [colNorm, key] of Object.entries(columnOverrides)) {
+        if (colNorm && typeof colNorm === 'string' && key && typeof key === 'string') {
+          effectiveColumnToKey[colNorm.trim().toLowerCase().replace(/\s+/g, '_')] = key.trim()
+        }
+      }
+    }
     const headerNormToKey = {}
     headers.forEach((h) => {
       const n = normalizeHeader(h)
-      if (COLUMN_TO_KEY[n] !== undefined) headerNormToKey[n] = COLUMN_TO_KEY[n]
+      if (effectiveColumnToKey[n] !== undefined) headerNormToKey[n] = effectiveColumnToKey[n]
       else headerNormToKey[n] = n || null
     })
 
@@ -793,7 +1113,8 @@ export default async function handler(req, res) {
         }
       }
 
-      const { valid, errors } = validarPorStageName(stageNameRaw, funilVal, data)
+      const config = mergeValidationConfig(validationConfig)
+      const { valid, errors } = validarPorStageName(stageNameRaw, funilVal, data, config)
 
       // Quem cobrar: E-mail do Solicitante (coluna email_solicitante → data.email)
       const email_solicitante = (data.email ?? data.email_do_solicitante ?? '').trim()
@@ -817,8 +1138,8 @@ export default async function handler(req, res) {
         ? String(data.areas_analise).trim()
         : null
 
-      const updated_at_iso = parseDateSheet(data.updated_at)
-      const created_at_iso = parseDateSheet(data.created_at)
+      const updated_at_iso = parseDateSheet(data.updated_at ?? data.date_update)
+      const created_at_iso = parseDateSheet(data.created_at ?? data.date_create)
       const refDate = updated_at_iso || created_at_iso
       const refTs = refDate ? new Date(refDate).getTime() : null
       const diasDesdeRef = refTs != null ? (Date.now() - refTs) / (24 * 60 * 60 * 1000) : null
@@ -834,12 +1155,20 @@ export default async function handler(req, res) {
         funil: funilVal || null,
         status: statusNorm,
         status_raw: (data.status ?? '').toString().trim() || null,
+        motivo_perda: (data.motivo_perda ?? '').toString().trim() || null,
         deal_id,
         telefone_notificar,
         areas,
         updated_at_iso: updated_at_iso || null,
         created_at_iso: created_at_iso || null,
         dias_desde_atualizacao: diasDesdeRef != null ? Math.floor(diasDesdeRef) : null,
+        razao_social: (data.razao_social ?? data.razao_social_cp ?? '').toString().trim() || null,
+        nome_lead: (data.nome ?? data.nome_lead ?? '').toString().trim() || null,
+        valor_mensal_fixo_cc: (data.valor_mensal_fixo_cc ?? '').toString().trim() || null,
+        valor_exito_cc: (data.valor_exito_cc ?? '').toString().trim() || null,
+        valor_mensal_preco_fechado_cc: (data.valor_mensal_preco_fechado_cc ?? '').toString().trim() || null,
+        // Dados completos da planilha para exibir no detalhe da negociação ganha
+        planilha: data,
       })
     }
 

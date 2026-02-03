@@ -57,12 +57,6 @@ export const salesFunnelSteps: Step[] = [
         required: true,
       },
       {
-        name: 'Áreas Envolvidas *',
-        instruction: 'Selecione todas as áreas do escritório que estarão envolvidas neste caso. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário e Contratos. Múltipla escolha - selecione todas que se aplicam.',
-        example: 'Cível; Trabalhista; Tributário',
-        required: true,
-      },
-      {
         name: 'Local da Reunião *',
         instruction: 'Local onde será realizada a reunião inicial. Pode ser: endereço físico completo, link de reunião online (Teams, Zoom, etc.) ou "A definir" se ainda não foi agendado.',
         example: 'Teams / Sede SP - Rua X, 120',
@@ -307,9 +301,9 @@ export const salesFunnelSteps: Step[] = [
       },
       {
         name: 'Link da Proposta',
-        instruction: 'Link ou caminho para a pasta compartilhada onde a proposta está armazenada. Deve ser um diretório oficial (Sharepoint, VIOS, etc.). Após a confecção da proposta, incluir o link completo aqui.',
+        instruction: 'Link ou caminho para a pasta compartilhada onde a proposta está armazenada (Sharepoint, VIOS, etc.). Obrigatório na etapa "Proposta Enviada" ao enviar a proposta ao cliente.',
         example: 'https://sharepoint/.../proposta.pdf',
-        required: true,
+        required: false,
       },
     ],
     alerts: [
@@ -327,6 +321,9 @@ export const salesFunnelSteps: Step[] = [
     name: 'Proposta Enviada (AGUARDA CLIENTE)',
     subtitle: 'Aguardando resposta do cliente',
     description: 'Aguardando aceite ou recusa do cliente. O solicitante deve acompanhar a resposta.',
+    alerts: [
+      '⚠️ Nesta etapa o campo "Link da Proposta" é obrigatório no CRM/planilha — preencha para registrar onde a proposta foi enviada (SharePoint, VIOS, etc.).',
+    ],
     nextSteps: [
       'Aceite → Confecção de Contrato',
       'Recusa → Perda (registrar motivo)',

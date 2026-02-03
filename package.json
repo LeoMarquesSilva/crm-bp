@@ -14,14 +14,15 @@
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "@supabase/supabase-js": "^2.45.0",
+    "clsx": "^2.0.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "lucide-react": "^0.294.0",
-    "framer-motion": "^10.16.4",
-    "zustand": "^4.4.7",
-    "clsx": "^2.0.0",
-    "tailwind-merge": "^2.1.0"
+    "recharts": "^2.15.4",
+    "tailwind-merge": "^2.1.0",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -30,14 +31,14 @@
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "express": "^4.18.2",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
-    "concurrently": "^8.2.2",
-    "express": "^4.18.2",
     "vite": "^5.0.8"
   }
 }

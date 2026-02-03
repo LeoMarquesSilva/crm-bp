@@ -1,12 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, ExternalLink, BarChart3, Clock } from 'lucide-react'
+import { TrendingUp, ExternalLink, BarChart3, Clock, PieChart, LogOut } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { clearAuthenticated } from '@/lib/auth'
 
 export function Header() {
   const { pathname } = useLocation()
   const isValidacao = pathname === '/validacao'
   const isSla = pathname === '/sla'
   const isDashboardBi = pathname === '/dashboard-bi'
+  const isAnalisePlanilha = pathname === '/analise-planilha'
 
   return (
     <header 
@@ -66,6 +68,17 @@ export function Header() {
             <BarChart3 className="h-4 w-4" />
             Dashboard BI
           </Link>
+          <Link
+            to="/analise-planilha"
+            className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+              isAnalisePlanilha
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+          >
+            <PieChart className="h-4 w-4" />
+            Análise
+          </Link>
         </motion.nav>
 
         {/* Logo - center */}
@@ -82,9 +95,9 @@ export function Header() {
           />
         </motion.div>
 
-        {/* RD Station - right */}
+        {/* RD Station + Sair - right */}
         <motion.nav 
-          className="flex items-center"
+          className="flex items-center gap-2"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
@@ -99,6 +112,18 @@ export function Header() {
             <span>RD Station CRM</span>
             <ExternalLink className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity" />
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              clearAuthenticated()
+              window.location.href = '/'
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/90 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-300 text-sm font-semibold shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="Sair do sistema"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </button>
         </motion.nav>
       </div>
     </header>

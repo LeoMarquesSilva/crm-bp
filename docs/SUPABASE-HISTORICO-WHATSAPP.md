@@ -70,6 +70,28 @@ comment on column public.historico_envio_whatsapp.tempo_minutos is
   'Minutos entre o envio (created_at) e a correção (corrigido_em).';
 ```
 
+### 1.3. Coluna `origem` (Correção vs SLA)
+
+O histórico de **correção (Validação)** e o de **SLA** são diferentes: um registra envios sobre erros de validação e quando corrigiram os dados; o outro registra envios sobre leads fora do SLA e quando atualizaram no RD. Para separar, adicione a coluna `origem`:
+
+```sql
+alter table public.historico_envio_whatsapp
+  add column if not exists origem text default 'validacao';
+
+comment on column public.historico_envio_whatsapp.origem is
+  'validacao = envio de correção (Validação); sla = envio de lead fora do SLA.';
+```
+
+- **validacao**: envio feito na tela Validação (notificação de erro); "corrigido" = validação passou a considerar o lead OK.
+- **sla**: envio feito na tela Leads fora do SLA; "atualizado no RD" = lead saiu da lista de fora do SLA (atualizaram no RD).
+
+Índice para filtrar por origem:
+
+```sql
+create index if not exists idx_historico_wpp_origem
+  on public.historico_envio_whatsapp (origem);
+```
+
 Quando o usuário **valida de novo** a planilha e um lead que tinha recebido WhatsApp aparece **válido**, o app atualiza o envio correspondente com `corrigido_em` e `tempo_minutos`. Assim dá para ver na aba **Histórico WhatsApp** quem já corrigiu e em quanto tempo.
 
 **Se “corrigido” não aparecer** após você validar de novo:
@@ -99,9 +121,14 @@ create policy "Permitir update historico_wpp"
   on public.historico_envio_whatsapp for update
   using (true)
   with check (true);
+
+-- Permite excluir (usado para remover registro do histórico, ex.: envio sem querer)
+create policy "Permitir delete historico_wpp"
+  on public.historico_envio_whatsapp for delete
+  using (true);
 ```
 
-Se a tabela já existia e você criou só `insert` e `select`, rode apenas o bloco da política `update` acima.
+Se a tabela já existia e você criou só `insert` e `select`, rode o bloco da política `update` acima; para permitir exclusão pelo app, rode também o bloco da política `delete`.
 
 **Se o console mostra “Marcado como corrigido” mas a tabela no Supabase não atualiza:**  
 O update pode estar retornando 0 linhas (RLS bloqueando). O app agora avisa no console: `Update retornou 0 linhas ... política de UPDATE faltando`. Confira:

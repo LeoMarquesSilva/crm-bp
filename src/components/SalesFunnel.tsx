@@ -6,6 +6,7 @@ import { SearchBar } from './SearchBar'
 import { Badge } from '@/components/ui/Badge'
 import { useAppStore } from '@/stores/appStore'
 import { AlertTriangle } from 'lucide-react'
+import { normalizeForSearch } from '@/lib/searchUtils'
 
 export function SalesFunnel() {
   const { activeStep, setActiveStep, searchTerm } = useAppStore()
@@ -22,15 +23,18 @@ export function SalesFunnel() {
   const searchResults = useMemo(() => {
     if (!searchTerm.trim()) return { matches: [], count: 0 }
 
-    const term = searchTerm.toLowerCase()
+    const term = normalizeForSearch(searchTerm)
     const matches: Array<{ stepIndex: number; fieldIndex: number }> = []
 
     salesFunnelSteps.forEach((step, stepIdx) => {
+      const stepSearchable = [step.name, step.subtitle, step.description].join(' ')
+      const stepNorm = normalizeForSearch(stepSearchable)
+      if (stepNorm.includes(term)) {
+        matches.push({ stepIndex: stepIdx, fieldIndex: -1 })
+      }
       step.fields?.forEach((field, fieldIdx) => {
-        const searchable = [field.name, field.instruction, field.example]
-          .join(' ')
-          .toLowerCase()
-        if (searchable.includes(term)) {
+        const searchable = [field.name, field.instruction, field.example].join(' ')
+        if (normalizeForSearch(searchable).includes(term)) {
           matches.push({ stepIndex: stepIdx, fieldIndex: fieldIdx })
         }
       })
@@ -43,18 +47,23 @@ export function SalesFunnel() {
     if (!searchTerm.trim() || !activeStepData) {
       return []
     }
-    const matchingStepIndex = searchResults.matches.find(m => 
-      salesFunnelSteps[m.stepIndex]?.id === activeStepData.id
-    )?.stepIndex
-
-    if (matchingStepIndex === undefined || matchingStepIndex !== currentActiveIndex) {
+    const stepMatches = searchResults.matches.filter(
+      (m) => salesFunnelSteps[m.stepIndex]?.id === activeStepData.id && m.fieldIndex >= 0
+    )
+    if (stepMatches.length === 0 && searchResults.matches.find(
+      (m) => salesFunnelSteps[m.stepIndex]?.id === activeStepData.id
+    ) === undefined) {
       return []
     }
+    return stepMatches.map((m) => m.fieldIndex)
+  }, [searchTerm, searchResults, activeStepData])
 
-    return searchResults.matches
-      .filter((m) => m.stepIndex === currentActiveIndex)
-      .map((m) => m.fieldIndex)
-  }, [searchTerm, searchResults, currentActiveIndex, activeStepData])
+  const highlightStepTitle = useMemo(() => {
+    if (!searchTerm.trim() || !activeStepData) return false
+    return searchResults.matches.some(
+      (m) => salesFunnelSteps[m.stepIndex]?.id === activeStepData.id && m.fieldIndex === -1
+    )
+  }, [searchTerm, searchResults, activeStepData])
 
   // Auto-navigate to first match
   useEffect(() => {
@@ -137,6 +146,7 @@ export function SalesFunnel() {
             isActive={true}
             searchTerm={searchTerm}
             highlightFieldIndices={highlightIndices}
+            highlightStepTitle={highlightStepTitle}
           />
         )}
       </div>

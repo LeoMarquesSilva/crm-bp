@@ -4,32 +4,27 @@ import { Alert } from '@/components/ui/Alert'
 import { CheckCircle2, ArrowRight, AlertTriangle } from 'lucide-react'
 import { LeadForm } from './LeadForm'
 import { cn } from '@/lib/utils'
+import { getHighlightParts } from '@/lib/searchUtils'
 
 interface StepDetailProps {
   step: Step
   isActive: boolean
   searchTerm?: string
   highlightFieldIndices?: number[]
+  highlightStepTitle?: boolean
 }
 
 function highlightText(text: string, searchTerm: string) {
-  if (!searchTerm.trim()) return text
-
-  const regex = new RegExp(`(${searchTerm})`, 'gi')
-  const parts = text.split(regex)
-
+  const parts = getHighlightParts(text, searchTerm)
   return (
     <>
       {parts.map((part, index) =>
-        regex.test(part) ? (
-          <mark
-            key={index}
-            className="bg-yellow-200 px-1 rounded"
-          >
-            {part}
+        part.highlight ? (
+          <mark key={index} className="bg-yellow-200 px-1 rounded">
+            {part.text}
           </mark>
         ) : (
-          part
+          part.text
         )
       )}
     </>
@@ -41,20 +36,21 @@ export function StepDetail({
   isActive,
   searchTerm = '',
   highlightFieldIndices = [],
+  highlightStepTitle = false,
 }: StepDetailProps) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-      <div className="mb-6">
+      <div className={cn('mb-6', highlightStepTitle && 'rounded-lg bg-yellow-50 border border-yellow-200 p-3')}>
         <div className="flex items-center gap-3 mb-2">
           <h2 className="text-2xl font-bold text-primary">
-            {step.name}
+            {highlightStepTitle ? highlightText(step.name, searchTerm) : step.name}
           </h2>
           <Badge variant="default" className="text-xs">
             Etapa {step.number}
           </Badge>
         </div>
         <p className="text-gray-600 text-base">
-          {step.description}
+          {highlightStepTitle ? highlightText(step.description, searchTerm) : step.description}
         </p>
       </div>
 

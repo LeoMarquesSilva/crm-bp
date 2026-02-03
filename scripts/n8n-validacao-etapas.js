@@ -71,15 +71,13 @@ function validarCadastroLead(data) {
     else if (!REGEX_CNPJ_CPF(String(cnpjVal).trim())) addError(errors, 'CNPJ/CPF', 'Formato inválido.', 'CNPJ: XX.XXX.XXX/XXXX-XX. CPF: XXX.XXX.XXX-XX.')
   }
 
-  // Áreas envolvidas – string ";" ou array
-  const areas = get('areas_analise') ?? get('areas_envolvidas')
-  if (vazio(areas)) addError(errors, 'Áreas Envolvidas', 'Campo obrigatório.', 'Selecione ao menos uma: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário e Contratos')
-  else if (typeof areas === 'string' && areas.trim().toLowerCase() === 'a definir') addError(errors, 'Áreas Envolvidas', 'Selecione as áreas jurídicas.', 'Ex.: Cível; Trabalhista; Tributário')
+  // Áreas envolvidas: não considerado mais na validação (removido)
 
-  // Condicionais – Due Diligence
+  // Condicionais – Due Diligence (Prazo: "A definir" é aceito; só exige quando estiver vazio)
   if (String(get('due_diligence')).trim().toLowerCase() === 'sim') {
-    if (vazio(get('prazo_reuniao_due')) || String(get('prazo_reuniao_due')).toLowerCase() === 'a definir') addError(errors, 'Prazo de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Formato DD/MM/AAAA. Ex.: 15/06/2025')
-    if (vazio(get('horario_due')) || String(get('horario_due')).toLowerCase() === 'a definir') addError(errors, 'Horário de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Formato 24h HH:MM. Ex.: 14:30')
+    if (vazio(get('prazo_reuniao_due'))) addError(errors, 'Prazo de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Formato DD/MM/AAAA ou "A definir". Ex.: 15/06/2025')
+    // "A definir" é aceito quando a pessoa ainda não tem o horário
+    if (vazio(get('horario_due'))) addError(errors, 'Horário de Entrega da Due', 'Obrigatório quando Haverá Due Diligence = Sim.', 'Informe o horário (HH:MM) ou use "A definir" se ainda não tiver.')
   }
 
   // Condicionais – Tipo de Lead = Indicação

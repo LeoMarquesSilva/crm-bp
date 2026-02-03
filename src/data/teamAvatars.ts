@@ -1,6 +1,6 @@
 /**
  * Avatares, tags de área e nome por e-mail.
- * renato@bismarchipires.com.br e renato@bpplaw.com.br são a mesma pessoa (normalizados na busca).
+ * E-mails @bismarchipires.com.br e @bpplaw.com.br são a mesma pessoa (normalizados na busca).
  */
 const BASE_URL = 'https://www.bismarchipires.com.br/img/team'
 
@@ -10,9 +10,9 @@ export type TeamMember = {
   name: string
 }
 
-/** E-mails @bismarchipires são normalizados para @bpplaw na busca. */
+/** E-mails @bismarchipires são normalizados para @bpplaw na busca (considere bpplaw para todos). */
 const TEAM_BY_EMAIL: Record<string, TeamMember> = {
-  // Sócios
+  // Sócio
   'gustavo@bpplaw.com.br': {
     avatar: `${BASE_URL}/socios/gustavo-site.png`,
     tag: 'Sócio',
@@ -51,6 +51,16 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Distressed Deals',
     name: 'Michel Malaquias',
   },
+  'emanueli.lourenco@bpplaw.com.br': {
+    avatar: `${BASE_URL}/distressed-deals/emanueli-lourenco.png`,
+    tag: 'Distressed Deals',
+    name: 'Emanueli Lourenço',
+  },
+  'ariany.bispo@bpplaw.com.br': {
+    avatar: `${BASE_URL}/distressed-deals/ariany-bispo.png`,
+    tag: 'Distressed Deals',
+    name: 'Ariany Bispo',
+  },
   // Reestruturação
   'jorge@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/jorge-pecht-souza.jpg`,
@@ -60,31 +70,35 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
   'leonardo@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/leo-loureiro.png`,
     tag: 'Reestruturação',
-    name: 'Leonardo Loureiro',
+    name: 'Leonardo Loureiro Basso',
   },
   'ligia@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/ligia-gilberti-lopes.jpg`,
     tag: 'Reestruturação',
     name: 'Ligia Lopes',
   },
-  // Societário e Contratos
   'wagner.armani@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/wagner.jpg`,
-    tag: 'Societário e Contratos',
+    tag: 'Reestruturação',
     name: 'Wagner Armani',
   },
   'jansonn@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/jansonn.jpg`,
-    tag: 'Societário e Contratos',
-    name: 'Jansonn Mendonça',
+    tag: 'Reestruturação',
+    name: 'Jansonn Mendonça Batista',
   },
-  // Operações Legais (felipe@bpplaw.com / felipe@bismarchipires.com)
+  // Operações Legais
   'felipe@bpplaw.com.br': {
-    avatar: 'https://www.bismarchipires.com.br/img/team/legal-ops/felipe-carmargo.jpg',
+    avatar: `${BASE_URL}/legal-ops/felipe-carmargo.jpg`,
     tag: 'Operações Legais',
     name: 'Felipe Camargo',
   },
-  // Tributário (francisco.zanin@bpplaw.com / francisco.zanin@bismarchipires.com)
+  'lavinia.ferraz@bpplaw.com.br': {
+    avatar: 'https://www.bismarchipires.com.br/img/team/legal-ops/lavinia-ferraz-crispim.jpg',
+    tag: 'Operações Legais',
+    name: 'Lavínia Ferraz Crispim',
+  },
+  // Tributário
   'francisco.zanin@bpplaw.com.br': {
     avatar: 'https://www.bismarchipires.com.br/blog/wp-content/uploads/2026/01/Captura-de-tela-2026-01-27-180946.png',
     tag: 'Tributário',
@@ -101,6 +115,29 @@ function normalizeEmailForLookup(email: string): string {
     .replace('@bismarchipires.com', '@bpplaw.com')
 }
 
+/** E-mail no domínio @bismarchipires.com.br (para formulário e webhook). */
+function toBismarchiEmail(bpplawEmail: string): string {
+  if (!bpplawEmail || typeof bpplawEmail !== 'string') return ''
+  return bpplawEmail
+    .trim()
+    .toLowerCase()
+    .replace('@bpplaw.com.br', '@bismarchipires.com.br')
+    .replace('@bpplaw.com', '@bismarchipires.com')
+}
+
+/** Lista de opções para select de solicitante (avatar + nome), ordenada por nome. email = chave bpplaw; emailBismarchi = e-mail a enviar. */
+export type SolicitanteOption = { email: string; emailBismarchi: string; name: string; avatar: string }
+export function getSolicitanteOptions(): SolicitanteOption[] {
+  return Object.entries(TEAM_BY_EMAIL)
+    .map(([email, m]) => ({
+      email,
+      emailBismarchi: toBismarchiEmail(email),
+      name: m.name,
+      avatar: m.avatar,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+}
+
 /** Chave única por pessoa. renato@bismarchipires e renato@bpplaw → mesma chave. Use para agrupar. */
 export function getSolicitanteKey(email: string): string {
   return normalizeEmailForLookup(email) || email.trim().toLowerCase() || ''
@@ -110,4 +147,19 @@ export function getTeamMember(email: string): TeamMember | null {
   const key = normalizeEmailForLookup(email)
   if (!key) return null
   return TEAM_BY_EMAIL[key] ?? null
+}
+
+/** Área (tag) do solicitante por e-mail. Usado no filtro por área (área = tag do solicitante). */
+export function getAreaByEmail(email: string): string | null {
+  const m = getTeamMember(email)
+  return (m?.tag?.trim()) || null
+}
+
+/** Lista de áreas (tags) únicas, ordenada. */
+export function getAreaTags(): string[] {
+  const set = new Set<string>()
+  Object.values(TEAM_BY_EMAIL).forEach((m) => {
+    if (m.tag?.trim()) set.add(m.tag.trim())
+  })
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
 }
