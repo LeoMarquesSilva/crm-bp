@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Alert } from '@/components/ui/Alert'
-import { CheckCircle2, Loader2, Info, AlertCircle, ChevronDown } from 'lucide-react'
+import { CheckCircle2, Loader2, Info, AlertCircle, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getSolicitanteOptions } from '@/data/teamAvatars'
 
@@ -77,6 +77,10 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'warning' | 'error'>('success')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showResultModal, setShowResultModal] = useState(false)
+  const [resultType, setResultType] = useState<'success' | 'error'>('success')
+  const [resultMessage, setResultMessage] = useState('')
 
   const formatarDataBrasileira = (dataISO: string) => {
     if (!dataISO || dataISO === 'A definir') {
@@ -199,13 +203,54 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     setMessage('')
+    setShowConfirmModal(true)
+  }
+
+  const resumoConfirmacao = (() => {
+    const dataReuniao = formData.data_reuniao ? formatarDataBrasileira(formData.data_reuniao) : 'A definir'
+    const horarioReuniao = formData.horario_reuniao || 'A definir'
+    const prazoDue = formData.prazo_reuniao_due ? formatarDataBrasileira(formData.prazo_reuniao_due) : '—'
+    const horarioDue = formData.horario_due || '—'
+    const cadastradoPorNome = selectedCadastradoPor?.name || formData.cadastrado_por || '—'
+    const itens: { label: string; value: string }[] = [
+      { label: 'Solicitante', value: formData.solicitante || '—' },
+      { label: 'E-mail do solicitante', value: formData.email || '—' },
+      { label: 'Cadastro realizado por', value: cadastradoPorNome },
+      { label: 'Haverá Due Diligence?', value: formData.due_diligence || '—' },
+    ]
+    if (formData.due_diligence === 'Sim') {
+      itens.push({ label: 'Prazo entrega Due', value: prazoDue }, { label: 'Horário entrega Due', value: horarioDue })
+    }
+    formData.razao_social_cnpj.forEach((item, i) => {
+      const sufixo = formData.razao_social_cnpj.length > 1 ? ` ${i + 1}` : ''
+      itens.push(
+        { label: `Razão Social${sufixo}`, value: item.razao_social || '—' },
+        { label: `CNPJ/CPF${sufixo}`, value: item.cnpj || '—' }
+      )
+    })
+    itens.push(
+      { label: 'Local da reunião', value: formData.local_reuniao || '—' },
+      { label: 'Data da reunião', value: dataReuniao },
+      { label: 'Horário da reunião', value: horarioReuniao },
+      { label: 'Tipo de lead', value: formData.tipo_de_lead || '—' }
+    )
+    if (formData.tipo_de_lead === 'Indicação') {
+      itens.push(
+        { label: 'Indicação', value: formData.indicacao || '—' },
+        { label: 'Nome da indicação', value: formData.nome_indicacao || '—' }
+      )
+    }
+    return itens
+  })()
+
+  const confirmarEEnviar = async () => {
+    setShowConfirmModal(false)
+    setIsSubmitting(true)
 
     try {
-      // Payload alinhado ao N8N: Webhook → Limitar 255 → Negociação com/sem Due → RD Station + e-mails
       const dataReuniaoFormatada = formData.data_reuniao ? formatarDataBrasileira(formData.data_reuniao) : 'A definir'
       const horarioReuniao = formData.horario_reuniao || 'A definir'
       const dataHorarioReuniao =
@@ -236,43 +281,41 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
         origem: 'Bismarchi | Pires - Manual CRM',
       }
 
-      // Salva no localStorage como backup
       const dadosExistentes = JSON.parse(localStorage.getItem('leads') || '[]')
       dadosExistentes.push(dadosParaEnvio)
       localStorage.setItem('leads', JSON.stringify(dadosExistentes))
       console.log('💾 Dados salvos no localStorage:', dadosParaEnvio)
 
-      // Tenta enviar para o webhook
       const webhookSucesso = await enviarWebhook(dadosParaEnvio)
 
       if (webhookSucesso) {
-        setMessage('✅ Lead cadastrado com sucesso e enviado para o sistema!')
-        setMessageType('success')
+        setResultType('success')
+        setResultMessage('Lead enviado com sucesso para o RD Station.')
+        setFormData({
+          solicitante: '',
+          email: '',
+          cadastrado_por: '',
+          due_diligence: '',
+          prazo_reuniao_due: '',
+          horario_due: '',
+          razao_social_cnpj: [{ razao_social: '', cnpj: '', tipo_doc: 'cnpj' }],
+          local_reuniao: '',
+          data_reuniao: '',
+          horario_reuniao: '',
+          tipo_de_lead: '',
+          indicacao: '',
+          nome_indicacao: '',
+        })
       } else {
-        setMessage('⚠️ Lead cadastrado com sucesso! Dados salvos localmente. O webhook pode ter problemas de CORS - verifique o console para detalhes.')
-        setMessageType('warning')
+        setResultType('error')
+        setResultMessage('Não foi possível enviar para o RD Station. Os dados foram salvos localmente. Verifique sua conexão ou tente novamente mais tarde.')
       }
-
-      // Limpa o formulário
-      setFormData({
-        solicitante: '',
-        email: '',
-        cadastrado_por: '',
-        due_diligence: '',
-        prazo_reuniao_due: '',
-        horario_due: '',
-        razao_social_cnpj: [{ razao_social: '', cnpj: '', tipo_doc: 'cnpj' }],
-        local_reuniao: '',
-        data_reuniao: '',
-        horario_reuniao: '',
-        tipo_de_lead: '',
-        indicacao: '',
-        nome_indicacao: '',
-      })
+      setShowResultModal(true)
     } catch (error) {
       console.error('Erro no processamento:', error)
-      setMessage('❌ Ocorreu um erro ao cadastrar o lead. Dados salvos localmente. Tente novamente.')
-      setMessageType('error')
+      setResultType('error')
+      setResultMessage('Ocorreu um erro ao cadastrar o lead. Os dados foram salvos localmente. Tente novamente.')
+      setShowResultModal(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -744,6 +787,78 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
           </button>
         </div>
       </form>
+
+      {/* Modal de confirmação */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowConfirmModal(false)}>
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-primary text-white">
+              <h3 className="font-semibold text-lg">Confirmar dados do lead</h3>
+              <button type="button" onClick={() => setShowConfirmModal(false)} className="p-1.5 rounded-lg hover:bg-white/20">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 text-sm">
+              <p className="text-gray-600 mb-4">Confira as informações antes de enviar para o RD Station:</p>
+              <dl className="space-y-2">
+                {resumoConfirmacao.map((item, i) => (
+                  <div key={i} className="flex gap-2">
+                    <dt className="text-gray-500 font-medium min-w-[140px]">{item.label}:</dt>
+                    <dd className="text-gray-900 break-words">{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEEnviar}
+                className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 font-medium flex items-center gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Confirmar e enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de resultado (sucesso/erro) */}
+      {showResultModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowResultModal(false)}>
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {resultType === 'success' ? (
+              <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto mb-4" />
+            ) : (
+              <AlertCircle className="h-14 w-14 text-red-500 mx-auto mb-4" />
+            )}
+            <h3 className="font-semibold text-lg text-gray-900 mb-2">
+              {resultType === 'success' ? 'Enviado com sucesso' : 'Erro no envio'}
+            </h3>
+            <p className="text-gray-600 text-sm mb-6">{resultMessage}</p>
+            <button
+              type="button"
+              onClick={() => setShowResultModal(false)}
+              className="w-full px-4 py-2.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
