@@ -31,6 +31,15 @@ interface RazaoSocialCNPJ {
   tipo_doc: 'cpf' | 'cnpj'
 }
 
+const AREAS_ANALISE_OPCOES = [
+  'Cível',
+  'Reestruturação',
+  'Tributário',
+  'Trabalhista',
+  'Distressed Deals',
+  'Societário e Contratos',
+] as const
+
 interface LeadFormProps {
   alerts?: string[]
 }
@@ -50,6 +59,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     tipo_de_lead: '',
     indicacao: '',
     nome_indicacao: '',
+    areas_analise: [] as string[],
   })
 
   const solicitanteOptions = getSolicitanteOptions()
@@ -203,9 +213,22 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
     }
   }
 
+  const toggleAreaAnalise = (area: string) => {
+    setFormData((prev) => {
+      const current = prev.areas_analise
+      const next = current.includes(area) ? current.filter((a) => a !== area) : [...current, area]
+      return { ...prev, areas_analise: next }
+    })
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setMessage('')
+    if (formData.areas_analise.length === 0) {
+      setMessage('Selecione pelo menos uma área de análise.')
+      setMessageType('error')
+      return
+    }
     setShowConfirmModal(true)
   }
 
@@ -235,7 +258,8 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
       { label: 'Local da reunião', value: formData.local_reuniao || '—' },
       { label: 'Data da reunião', value: dataReuniao },
       { label: 'Horário da reunião', value: horarioReuniao },
-      { label: 'Tipo de lead', value: formData.tipo_de_lead || '—' }
+      { label: 'Tipo de lead', value: formData.tipo_de_lead || '—' },
+      { label: 'Áreas de análise', value: formData.areas_analise.length ? formData.areas_analise.join('; ') : '—' }
     )
     if (formData.tipo_de_lead === 'Indicação') {
       itens.push(
@@ -277,6 +301,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
         nome_indicacao: formData.nome_indicacao,
         tipo_de_lead: formData.tipo_de_lead,
         due_diligence: formData.due_diligence,
+        areas_analise: formData.areas_analise,
         timestamp: new Date().toLocaleString('pt-BR'),
         origem: 'Bismarchi | Pires - Manual CRM',
       }
@@ -305,6 +330,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
           tipo_de_lead: '',
           indicacao: '',
           nome_indicacao: '',
+          areas_analise: [],
         })
       } else {
         setResultType('error')
@@ -425,7 +451,7 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
 
           <div className="relative" ref={cadastradoPorDropdownRef}>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Cadastro realizado por: <span className="text-red-500">*</span>
+              Cadastro realizado por (e-mail) <span className="text-red-500">*</span>
             </label>
             <input type="hidden" name="cadastrado_por" value={formData.cadastrado_por} required />
             <button
@@ -637,6 +663,38 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
             >
               + Adicionar Empresa/Pessoa
             </button>
+          </div>
+        </div>
+
+        {/* Seção: Áreas de análise */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+            <div className="w-1 h-6 bg-primary rounded-full"></div>
+            <h3 className="font-semibold text-gray-800">Áreas de análise</h3>
+          </div>
+          <p className="text-sm text-gray-600">
+            Selecione todas as áreas do escritório que estarão envolvidas neste caso. <span className="text-red-500">*</span>
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {AREAS_ANALISE_OPCOES.map((area) => (
+              <label
+                key={area}
+                className={cn(
+                  'flex items-center gap-2 cursor-pointer px-4 py-2.5 rounded-lg border-2 transition-colors',
+                  formData.areas_analise.includes(area)
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-gray-200 hover:border-primary/50 text-gray-700'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.areas_analise.includes(area)}
+                  onChange={() => toggleAreaAnalise(area)}
+                  className="w-4 h-4 rounded text-primary focus:ring-primary"
+                />
+                <span className="font-medium">{area}</span>
+              </label>
+            ))}
           </div>
         </div>
 

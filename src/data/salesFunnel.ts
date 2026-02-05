@@ -92,6 +92,12 @@ export const salesFunnelSteps: Step[] = [
         example: 'Carlos Mendes',
         required: false,
       },
+      {
+        name: 'Áreas de análise *',
+        instruction: 'Selecione todas as áreas do escritório que estarão envolvidas neste caso. Obrigatório pelo menos uma. Múltipla escolha. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário e Contratos.',
+        example: 'Cível; Trabalhista; Tributário',
+        required: true,
+      },
     ],
     alerts: [
       '⚠️ Se "Haverá Due Diligence?" = Sim, os campos "Prazo de Entrega da Due" e "Horário de Entrega da Due" se tornam obrigatórios.',
