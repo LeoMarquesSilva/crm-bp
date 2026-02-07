@@ -41,9 +41,23 @@ import {
   Building2,
   UserCog,
   MoreHorizontal,
+  Eraser,
+  FileBarChart,
+  Scale,
+  Crown,
+  FileCheck,
+  type LucideIcon,
 } from 'lucide-react'
 import { DashboardSection } from '@/components/dashboard/DashboardSection'
 import { AiAssistant } from '@/components/ai/AiAssistant'
+import { DashboardTabBar } from '@/pages/analise/DashboardTabBar'
+import { MotivosPerdaSection } from '@/pages/analise/MotivosPerdaSection'
+import type { DashboardTabId } from '@/pages/analise/types'
+
+type AnalisePlanilhaProps = {
+  activeTab?: DashboardTabId
+  onTabChange?: (tab: DashboardTabId) => void
+}
 import {
   BarChart,
   Bar,
@@ -57,6 +71,7 @@ import {
   Cell,
 } from 'recharts'
 import { getTeamMember, getSolicitanteKey, getAreaByEmail } from '@/data/teamAvatars'
+import { useCountUp } from '@/hooks/useCountUp'
 
 /** Detalhe de lead sem área: nome do solicitante e nome do lead (para exibir no relatório). */
 type SemAreaDetalhe = { solicitanteNome: string; leadNome: string }
@@ -370,6 +385,9 @@ const MESES_LABEL: Record<number, string> = {
   7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro',
 }
 
+/** Cores para o donut por área — paleta suave, destaque âmbar (referência UX). */
+const CORES_POR_AREA = ['#d97706', '#0d9488', '#4f46e5', '#64748b', '#059669', '#7c3aed', '#0369a1', '#b45309', '#0f766e', '#6b21a8']
+
 /** Etapas que a API ignora (não entram na análise). Deve estar em sync com api/validar-sheets.js DISREGARD_STAGE_NAMES */
 const STAGES_IGNORADOS = [
   'Contato Inicial',
@@ -408,6 +426,18 @@ function sortEtapasByFunil(etapas: string[]): string[] {
   return [...naOrdem, ...outras]
 }
 
+/** Ícone por área (tag do solicitante) para o ranking de performance. */
+const AREA_ICONS: Record<string, LucideIcon> = {
+  'Sócio': Crown,
+  'Cível': Scale,
+  'Trabalhista': Users,
+  'Distressed Deals': TrendingDown,
+  'Reestruturação': RefreshCw,
+  'Operações Legais': FileCheck,
+  'Tributário': Calculator,
+  'Societário e Contratos': Briefcase,
+}
+
 /** Dados de um solicitante para o card do pódio (ranking de performance). */
 type PodiumCardData = {
   emailKey: string
@@ -423,7 +453,7 @@ type PodiumCardData = {
   rank: number
 }
 
-/** Card do pódio: avatar, nome, tag de área, posição. No hover revela ganhas/perdidas/em andamento, taxas e barra. */
+/** Card do pódio: avatar, nome, tag de área com ícone, posição. Status e taxas sempre visíveis. */
 function PodiumCard({
   p,
   position,
@@ -439,6 +469,7 @@ function PodiumCard({
   onClick: () => void
   isSelected: boolean
 }) {
+  const AreaIcon = p.area ? AREA_ICONS[p.area] : null
   return (
     <button
       type="button"
@@ -463,26 +494,27 @@ function PodiumCard({
         {p.nome}
       </p>
       {p.area && (
-        <span className="mt-1.5 inline-block rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
+        <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary">
+          {AreaIcon && <AreaIcon className="h-3.5 w-3.5 shrink-0" />}
           {p.area}
         </span>
       )}
-      {/* Detalhes no hover */}
-      <div className="mt-3 w-full pt-3 border-t border-gray-200/80 opacity-0 max-h-0 overflow-hidden group-hover:opacity-100 group-hover:max-h-36 transition-all duration-300 text-left">
-        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-sm">
-          <span className="text-post font-semibold">{p.won} ganhas</span>
-          <span className="text-red-600">{p.lost} perdidas</span>
-          <span className="text-gray-500">{p.ongoing} and.</span>
+      {/* Status e taxas — centralizado, número sem % repetido */}
+      <div className="mt-3 w-full pt-3 border-t border-gray-200/80 text-center">
+        <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5 text-sm">
+          <span className="text-post font-semibold">{p.won} Ganhas</span>
+          <span className="text-red-600">{p.lost} Perdidas</span>
+          <span className="text-gray-600">{p.ongoing} Em andamento</span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+        <div className="mt-2 flex flex-wrap justify-center items-center gap-2">
+          <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary" title="Taxa de conversão">
             <Percent className="h-3 w-3" />
-            {p.conversionRate}%
+            Conversão: {p.conversionRate}
           </span>
           {p.won + p.lost > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-post/15 px-2 py-0.5 text-xs font-semibold text-post">
+            <span className="inline-flex items-center gap-0.5 rounded bg-post/15 px-2 py-0.5 text-xs font-semibold text-post" title="Win rate">
               <Target className="h-3 w-3" />
-              {p.winRate}%
+              Win rate: {p.winRate}
             </span>
           )}
         </div>
@@ -496,7 +528,13 @@ function PodiumCard({
   )
 }
 
-export function AnalisePlanilha() {
+/** Exibe um número animado de 0 até value (para usar em listas/legendas). */
+function CountUpValue({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const n = useCountUp(value)
+  return <>{n}{suffix}</>
+}
+
+export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: AnalisePlanilhaProps = {}) {
   const [accessToken, setAccessToken] = useState<string | null>(() => loadStoredToken())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -510,7 +548,12 @@ export function AnalisePlanilha() {
   const [selectedEtapas, setSelectedEtapas] = useState<string[]>([])
   const [showWonLeadsPanel, setShowWonLeadsPanel] = useState(false)
   const [selectedSolicitanteKey, setSelectedSolicitanteKey] = useState<string | null>(null)
+  /** Filtro do painel de leads ao clicar em um vendedor: vendidas, perdidas ou em andamento */
+  const [filterLeadsPanelStatus, setFilterLeadsPanelStatus] = useState<'win' | 'lost' | 'ongoing' | 'all'>('all')
   const [selectedLead, setSelectedLead] = useState<PlanilhaRow | null>(null)
+  const [internalTab, setInternalTab] = useState<DashboardTabId>('visao-geral')
+  const activeTab = activeTabProp ?? internalTab
+  const setActiveTab = onTabChange ?? setInternalTab
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
@@ -640,6 +683,30 @@ export function AnalisePlanilha() {
     const lossRate = total > 0 ? Math.round((lost / total) * 100) : 0
     return { total, won, lost, ongoing, conversionRate, winRate, lossRate }
   }, [results])
+
+  /** Resumo por área (para gráfico na Visão Geral). */
+  const resumoPorAreaData = useMemo(() => {
+    const byArea = new Map<string, number>()
+    results.forEach((r) => {
+      const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const area = e ? getAreaByEmail(e) : null
+      const key = area ?? '(sem área)'
+      byArea.set(key, (byArea.get(key) ?? 0) + 1)
+    })
+    return Array.from(byArea.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+  }, [results])
+
+  /** Números animados (0 → total) ao carregar / ao mudar dados */
+  const countTotal = useCountUp(resumo.total)
+  const countWon = useCountUp(resumo.won)
+  const countLost = useCountUp(resumo.lost)
+  const countOngoing = useCountUp(resumo.ongoing)
+  const countConversion = useCountUp(resumo.conversionRate, { decimals: 0 })
+  const countWinRate = useCountUp(resumo.winRate, { decimals: 0 })
+  const totalPorArea = resumoPorAreaData.reduce((s, d) => s + d.value, 0)
+  const countPorAreaTotal = useCountUp(totalPorArea)
 
   const motivoPerdaData = useMemo(() => {
     const lostRows = results.filter((r) => r.status === 'lost')
@@ -948,6 +1015,20 @@ export function AnalisePlanilha() {
   }, [results, getLeadField])
 
   const wonLeads = useMemo(() => results.filter((r) => r.status === 'win'), [results])
+  /** Todas as leads do solicitante selecionado (para o painel com filtro Vendidas/Perdidas/Em andamento) */
+  const leadsDoSolicitanteSelecionado = useMemo(() => {
+    if (!selectedSolicitanteKey) return []
+    return results.filter((r) => {
+      const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const key = e ? getSolicitanteKey(e) : '(sem e-mail)'
+      return key === selectedSolicitanteKey
+    })
+  }, [results, selectedSolicitanteKey])
+  /** Leads do painel filtradas por status (Vendidas / Perdidas / Em andamento) */
+  const leadsPainelFiltradasPorStatus = useMemo(() => {
+    if (filterLeadsPanelStatus === 'all') return leadsDoSolicitanteSelecionado
+    return leadsDoSolicitanteSelecionado.filter((r) => r.status === filterLeadsPanelStatus)
+  }, [leadsDoSolicitanteSelecionado, filterLeadsPanelStatus])
   const wonLeadsFiltradasPorSolicitante = useMemo(() => {
     if (!selectedSolicitanteKey) return wonLeads
     return wonLeads.filter((r) => {
@@ -956,15 +1037,6 @@ export function AnalisePlanilha() {
       return key === selectedSolicitanteKey
     })
   }, [wonLeads, selectedSolicitanteKey])
-
-  const resumoPieData = useMemo(
-    () => [
-      { name: 'Ganhas', value: resumo.won, color: '#2d936c' },
-      { name: 'Perdidas', value: resumo.lost, color: '#dc2626' },
-      { name: 'Em andamento', value: resumo.ongoing, color: '#d5b170' },
-    ].filter((d) => d.value > 0),
-    [resumo]
-  )
 
   /** Etapas (stage_name) que aparecem nos dados atuais (após filtros). Ordem: funil oficial, depois demais. */
   const etapasConsideradasNosDados = useMemo(() => {
@@ -993,8 +1065,25 @@ export function AnalisePlanilha() {
   const [expandListaLeads, setExpandListaLeads] = useState(false)
   /** Filtro da lista de leads por motivo de perda (clique em um motivo). */
   const [filterListaPorMotivo, setFilterListaPorMotivo] = useState<string | null>(null)
+  /** Filtros da aba Leads (além dos filtros globais). */
+  const [filterLeadsEtapa, setFilterLeadsEtapa] = useState<string>('')
+  const [filterLeadsNome, setFilterLeadsNome] = useState('')
+  const [filterLeadsFunil, setFilterLeadsFunil] = useState<string>('')
+  const [filterLeadsStatus, setFilterLeadsStatus] = useState<string>('')
+  const [filterLeadsSolicitante, setFilterLeadsSolicitante] = useState<string>('')
+  const [filterLeadsArea, setFilterLeadsArea] = useState<string>('')
+  /** WhatsApp inline na aba Relatórios (sem modal). */
+  const [wppNumberInline, setWppNumberInline] = useState('')
 
-  /** Lista de leads para exibir na tabela: filtrada por solicitante (se clicou no ranking) e/or motivo de perda (se clicou em um motivo). */
+  const clearMainFilters = useCallback(() => {
+    setFilterAno('')
+    setFilterMes('')
+    setFilterFunil('')
+    setFilterSolicitante('')
+    setFilterArea('')
+  }, [])
+
+  /** Lista de leads para exibir na tabela: filtrada por solicitante (se clicou no ranking) e/or motivo de perda (se clicou em um motivo) e filtros da aba Leads. */
   const listaLeadsFiltrada = useMemo(() => {
     let list = results
     if (selectedSolicitanteKey) {
@@ -1007,8 +1096,38 @@ export function AnalisePlanilha() {
     if (filterListaPorMotivo) {
       list = list.filter((r) => ((r.motivo_perda ?? '').trim() || 'Não informado') === filterListaPorMotivo)
     }
+    if (filterLeadsEtapa) {
+      list = list.filter((r) => (r.stage_name ?? '').trim() === filterLeadsEtapa)
+    }
+    if (filterLeadsNome.trim()) {
+      const q = filterLeadsNome.trim().toLowerCase()
+      list = list.filter((r) => {
+        const nome = (r.nome_lead ?? r.razao_social ?? r.id_registro ?? '').toString().toLowerCase()
+        return nome.includes(q)
+      })
+    }
+    if (filterLeadsFunil) {
+      list = list.filter((r) => (r.funil ?? '').trim() === filterLeadsFunil)
+    }
+    if (filterLeadsStatus) {
+      list = list.filter((r) => (r.status ?? '').trim() === filterLeadsStatus)
+    }
+    if (filterLeadsSolicitante) {
+      list = list.filter((r) => {
+        const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+        const key = e ? getSolicitanteKey(e) : '(sem e-mail)'
+        return key === filterLeadsSolicitante
+      })
+    }
+    if (filterLeadsArea) {
+      list = list.filter((r) => {
+        const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+        const area = e ? getAreaByEmail(e) : null
+        return area === filterLeadsArea
+      })
+    }
     return list
-  }, [results, selectedSolicitanteKey, filterListaPorMotivo])
+  }, [results, selectedSolicitanteKey, filterListaPorMotivo, filterLeadsEtapa, filterLeadsNome, filterLeadsFunil, filterLeadsStatus, filterLeadsSolicitante, filterLeadsArea])
 
   /** Leads por área (tag do solicitante) para relatório. Para "(sem área)" inclui detalhes: solicitante + nome do lead. */
   const leadsPorAreaParaRelatorio = useMemo(() => {
@@ -1327,6 +1446,31 @@ export function AnalisePlanilha() {
     }
   }, [wppNumber, wppMessage, closeWppModal])
 
+  const sendWppReportInline = useCallback(async () => {
+    const telefone = wppNumberInline.trim().replace(/\D/g, '')
+    const mensagem = reportText.trim()
+    if (!telefone || !mensagem) return
+    setWppSending(true)
+    setWppError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/enviar-whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: telefone, text: mensagem }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setWppError(json.message || json.error || 'Falha ao enviar.')
+        return
+      }
+      setWppError(null)
+    } catch {
+      setWppError('Erro de conexão. Verifique se a API e o webhook/Evolution estão configurados.')
+    } finally {
+      setWppSending(false)
+    }
+  }, [wppNumberInline, reportText])
+
   if (!clientId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -1384,15 +1528,52 @@ export function AnalisePlanilha() {
         background: 'linear-gradient(135deg, rgba(224, 242, 254, 0.4) 0%, rgba(255, 255, 255, 1) 40%, rgba(236, 253, 245, 0.4) 100%)',
       }}
     >
-      {/* Seção: Filtros */}
-      <DashboardSection
-        icon={<Filter className="h-5 w-5" />}
-        title="Filtros"
-        description="Período, funil, solicitante e área. Data: Date_Create (UTC)."
-        fullWidth
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm text-gray-600 sr-only">Filtros por período, funil, solicitante e área.</p>
+      <DashboardTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {error && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
+      )}
+
+      {/* Filtro geral (abaixo das tabs) */}
+      <div className="rounded-xl border border-gray-200/80 bg-white shadow-sm px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-gray-700">Filtro geral:</span>
+          <select id="filter-funil" value={filterFunil} onChange={(e) => setFilterFunil(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+            <option value="">Todos os funis</option>
+            {funisDisponiveis.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <select id="filter-solicitante" value={filterSolicitante} onChange={(e) => setFilterSolicitante(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+            <option value="">Todos solicitantes</option>
+            {solicitantesDisponiveis.map(({ key, nome }) => <option key={key} value={key}>{nome}</option>)}
+          </select>
+          <select id="filter-area" value={filterArea} onChange={(e) => setFilterArea(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+            <option value="">Todas as áreas</option>
+            {areasDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select id="filter-ano" value={filterAno} onChange={(e) => { setFilterAno(e.target.value ? Number(e.target.value) : ''); setFilterMes('') }} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+            <option value="">Todos os anos</option>
+            {anosDisponiveis.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <select id="filter-mes" value={filterMes} onChange={(e) => setFilterMes(e.target.value ? Number(e.target.value) : '')} disabled={!filterAno} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50">
+            <option value="">Todos os meses</option>
+            {mesesDisponiveis.map((m) => <option key={m} value={m}>{MESES_LABEL[m] ?? m}</option>)}
+          </select>
+          {(filterAno || filterMes) && (
+            <span className="text-sm text-gray-500">Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[filterMes] ?? filterMes}` : ''}</span>
+          )}
+          <button type="button" onClick={clearMainFilters} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
+            <Eraser className="h-4 w-4" />
+            Remover filtros
+          </button>
+        </div>
+      </div>
+
+      {/* === ABA VISÃO GERAL === */}
+      {activeTab === 'visao-geral' && (
+        <>
+      {/* (Filtro único na barra acima) */}
+      {false && <DashboardSection icon={null} title="" fullWidth><div className="flex flex-wrap justify-between gap-4">
+          <p className="sr-only">Filtros por período, funil, solicitante e área.</p>
           <p className="sr-only text-xs text-gray-500 mt-1">
             <strong>Funil:</strong> por padrão exibimos só <strong>Funil de vendas</strong> (para bater com sua contagem). Use “Todos os funis” para ver os demais. <strong>Etapas excluídas</strong> (não entram na contagem): {STAGES_IGNORADOS.join(', ')}.
           </p>
@@ -1459,31 +1640,26 @@ export function AnalisePlanilha() {
             >
               <option value="">Todos os meses</option>
               {mesesDisponiveis.map((m) => (
-                <option key={m} value={m}>{MESES_LABEL[m] ?? m}</option>
+                <option key={m} value={m}>{MESES_LABEL[Number(m)] ?? m}</option>
               ))}
             </select>
           </div>
+          </div>
           {(filterAno || filterMes) && (
             <span className="text-sm text-gray-500">
-              Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[filterMes] ?? filterMes}` : ''} (por data de criação)
+              Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[Number(filterMes)] ?? filterMes}` : ''} (por data de criação)
             </span>
           )}
           <button
             type="button"
-            onClick={loadPlanilha}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50"
+            onClick={clearMainFilters}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Atualizar
+            <Eraser className="h-4 w-4" />
+            Remover Filtros
           </button>
           </div>
-        </div>
-      </DashboardSection>
-
-      {error && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</div>
-      )}
+      </DashboardSection>}
 
       {/* Seção: Pipeline & Métricas (KPIs) */}
       <DashboardSection
@@ -1500,7 +1676,7 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-700">no período</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-gray-900 mt-3">{resumo.total}</p>
+          <p className="text-2xl lg:text-3xl font-bold text-gray-900 mt-3 tabular-nums">{countTotal}</p>
           <p className="text-sm text-gray-500 mt-0.5">Total de leads · Pipeline</p>
         </div>
         <button
@@ -1508,6 +1684,7 @@ export function AnalisePlanilha() {
           onClick={() => {
             setShowWonLeadsPanel(true)
             setSelectedSolicitanteKey(null)
+            setActiveTab('leads')
           }}
           className={cn(
             'rounded-2xl border p-5 shadow-md text-left transition-all hover:shadow-lg',
@@ -1522,7 +1699,7 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">ganhas</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-emerald-700 mt-3">{resumo.won}</p>
+          <p className="text-2xl lg:text-3xl font-bold text-emerald-700 mt-3 tabular-nums">{countWon}</p>
           <p className="text-sm text-gray-500 mt-0.5">Clique para ver lista</p>
         </button>
         <div className="rounded-2xl border border-rose-200/80 bg-white p-5 shadow-md hover:shadow-lg transition-shadow">
@@ -1532,7 +1709,7 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">perdidas</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-rose-700 mt-3">{resumo.lost}</p>
+          <p className="text-2xl lg:text-3xl font-bold text-rose-700 mt-3 tabular-nums">{countLost}</p>
           <p className="text-sm text-gray-500 mt-0.5">Leads perdidas</p>
         </div>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-md hover:shadow-lg transition-shadow">
@@ -1542,7 +1719,7 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">ativo</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-gray-800 mt-3">{resumo.ongoing}</p>
+          <p className="text-2xl lg:text-3xl font-bold text-gray-800 mt-3 tabular-nums">{countOngoing}</p>
           <p className="text-sm text-gray-500 mt-0.5">Em andamento</p>
         </div>
         <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-md hover:shadow-lg transition-shadow">
@@ -1552,7 +1729,7 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">conversão</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-primary mt-3">{resumo.conversionRate}%</p>
+          <p className="text-2xl lg:text-3xl font-bold text-primary mt-3 tabular-nums">{countConversion}%</p>
           <p className="text-sm text-gray-600 mt-0.5">Ganhas / Total</p>
         </div>
         <div className="rounded-2xl border border-post/30 bg-post/5 p-5 shadow-md hover:shadow-lg transition-shadow">
@@ -1562,218 +1739,198 @@ export function AnalisePlanilha() {
             </div>
             <span className="rounded-full bg-post/20 px-2.5 py-0.5 text-xs font-semibold text-post">win rate</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-post mt-3">{resumo.winRate}%</p>
+          <p className="text-2xl lg:text-3xl font-bold text-post mt-3 tabular-nums">{countWinRate}%</p>
           <p className="text-sm text-gray-600 mt-0.5">Ganhas / (Ganhas + Perdidas)</p>
         </div>
       </div>
       </DashboardSection>
 
-      {/* Grid 2 colunas: Motivos de perda | Resumo por status + Ranking + Relatórios */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Seção: Leads por Área — UX referência: total no centro, card limpo, legenda clara */}
+      <DashboardSection
+        icon={<Building2 className="h-5 w-5" />}
+        title="Leads por Área"
+        description="Distribuição do pipeline por área de atuação."
+      >
+        {resumoPorAreaData.length === 0 ? (
+          <p className="text-sm text-gray-500 py-8 text-center">Nenhum dado no período.</p>
+        ) : (
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6 shadow-sm max-w-2xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+              {/* Donut com total no centro */}
+              <div className="relative w-[240px] h-[240px] flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={resumoPorAreaData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={72}
+                      outerRadius={108}
+                      paddingAngle={3}
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {resumoPorAreaData.map((_, i) => (
+                        <Cell key={i} fill={CORES_POR_AREA[i % CORES_POR_AREA.length]} stroke="#fff" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string) => {
+                        const total = resumoPorAreaData.reduce((s, d) => s + d.value, 0)
+                        const pct = total > 0 ? ((Number(value) / total) * 100).toFixed(1) : '0'
+                        return [`${value} leads (${pct}%)`, name]
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-bold text-gray-900 tabular-nums">
+                    {countPorAreaTotal}
+                  </span>
+                  <span className="text-sm text-gray-500 mt-0.5">leads</span>
+                </div>
+              </div>
+              {/* Legenda ao lado do gráfico */}
+              <div className="space-y-2 flex-1 min-w-0 w-full sm:w-auto">
+              {resumoPorAreaData.map((d, i) => {
+                const total = resumoPorAreaData.reduce((s, x) => s + x.value, 0)
+                const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0'
+                const AreaIconLeg = d.name in AREA_ICONS ? AREA_ICONS[d.name] : null
+                return (
+                  <div
+                    key={d.name}
+                    className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors"
+                  >
+                    <span
+                      className="flex-shrink-0 w-3 h-3 rounded-full"
+                      style={{ backgroundColor: CORES_POR_AREA[i % CORES_POR_AREA.length] }}
+                    />
+                    {AreaIconLeg && (
+                      <span className="flex-shrink-0 text-primary">
+                        <AreaIconLeg className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="flex-1 text-sm font-medium text-gray-800 min-w-0">{d.name}</span>
+                    <span className="text-sm font-semibold text-gray-900 tabular-nums"><CountUpValue value={d.value} /></span>
+                    <span className="text-xs text-gray-500 tabular-nums w-8 text-right">({pct}%)</span>
+                  </div>
+                )
+              })}
+              </div>
+            </div>
+          </div>
+        )}
+      </DashboardSection>
+        </>
+      )}
+
+      {/* === ABA ANÁLISE DE PERDAS === */}
+      {activeTab === 'perdas' && (
+        <>
       {/* Seção: Motivos de perda */}
       <DashboardSection
         icon={<AlertCircle className="h-5 w-5" />}
         title="Motivos de perda"
         description="Resumo geral e por área. Clique em um motivo para filtrar a lista de leads abaixo."
       >
-        {motivoPerdaData.length === 0 ? (
-          <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead perdida ou motivo não preenchido.</p>
-        ) : (
-          <div className="space-y-5">
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Resumo geral ({resumo.lost} perdidas)</p>
-              {(() => {
-                const list = expandMotivosGeral ? motivoPerdaData : motivoPerdaData.slice(0, TOP_N)
-                const CARD_COLORS = ['bg-sky-100 border-sky-200/80', 'bg-teal-100 border-teal-200/80', 'bg-amber-100 border-amber-200/80', 'bg-slate-100 border-slate-200/80', 'bg-rose-100 border-rose-200/80', 'bg-violet-100 border-violet-200/80']
-                return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-                    {list.map((item, idx) => {
-                      const pct = resumo.lost > 0 ? Math.round((item.value / resumo.lost) * 100) : 0
-                      const cardClass = CARD_COLORS[idx % CARD_COLORS.length]
-                      const isActive = filterListaPorMotivo === item.name
-                      return (
-                        <button
-                          key={item.name}
-                          type="button"
-                          onClick={() => setFilterListaPorMotivo(isActive ? null : item.name)}
-                          className={cn(
-                            'rounded-2xl border p-4 shadow-sm hover:shadow-md transition-shadow text-left cursor-pointer',
-                            cardClass,
-                            isActive && 'ring-2 ring-primary ring-offset-2'
-                          )}
-                          title={isActive ? 'Clique para remover filtro na lista de leads' : 'Clique para filtrar lista de leads por este motivo'}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-xs font-bold text-gray-700 shadow-sm">
-                              {idx + 1}
-                            </span>
-                            <span className="text-sm font-semibold text-gray-800 truncate flex-1 min-w-0" title={item.name}>{item.name}</span>
-                          </div>
-                          <p className="text-xl font-bold text-gray-900 mt-2">{item.value} <span className="text-sm font-medium text-gray-600">({pct}%)</span></p>
-                          <div className="mt-2 h-1.5 w-full rounded-full bg-white/60 overflow-hidden">
-                            <div className="h-full rounded-full bg-gray-600/80 transition-all" style={{ width: `${Math.max(pct, 4)}%` }} />
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              })()}
-              {motivoPerdaData.length > TOP_N && (
-                <button
-                  type="button"
-                  onClick={() => setExpandMotivosGeral(!expandMotivosGeral)}
-                  className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 shadow-sm"
-                >
-                  {expandMotivosGeral ? (
-                    <>Mostrar menos <ChevronUp className="h-4 w-4" /></>
-                  ) : (
-                    <>Ver todos os {motivoPerdaData.length} motivos <ChevronDown className="h-4 w-4" /></>
-                  )}
-                </button>
-              )}
-            </div>
-            {motivoPerdaPorAreaData.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Por área de atuação</p>
-                <p className="text-xs text-gray-500 mb-2">Clique na área para ver os motivos</p>
-                <div className="space-y-1">
-                  {motivoPerdaPorAreaData.map(({ area, totalLost, motivos }) => {
-                    const isExpanded = expandedMotivosArea === area
-                    const list = motivos.slice(0, TOP_N)
-                    const hasMore = motivos.length > TOP_N
-                    return (
-                      <div key={area} className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedMotivosArea(isExpanded ? null : area)}
-                          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-gray-50/80 transition-colors"
-                        >
-                          <span className="font-semibold text-gray-800">{area}</span>
-                          <span className="text-gray-500 text-sm shrink-0">({totalLost} perdida{totalLost !== 1 ? 's' : ''})</span>
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 shrink-0 text-gray-500" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" />
-                          )}
-                        </button>
-                        {isExpanded && (
-                          <div className="px-3 pb-3 pt-1 border-t border-gray-100 space-y-2">
-                            {list.map((item, idx) => {
-                              const pct = totalLost > 0 ? Math.round((item.value / totalLost) * 100) : 0
-                              const isActive = filterListaPorMotivo === item.name
-                              return (
-                                <button
-                                  key={item.name}
-                                  type="button"
-                                  onClick={() => setFilterListaPorMotivo(isActive ? null : item.name)}
-                                  className={cn(
-                                    'w-full flex items-center gap-2 text-left rounded-lg px-2 py-1 -mx-2 hover:bg-gray-50 transition-colors',
-                                    isActive && 'bg-primary/10 ring-1 ring-primary/30'
-                                  )}
-                                  title={isActive ? 'Clique para remover filtro na lista de leads' : 'Clique para filtrar lista de leads por este motivo'}
-                                >
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-700">{idx + 1}</span>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex justify-between gap-2 text-xs">
-                                      <span className="font-medium text-gray-800 truncate">{item.name}</span>
-                                      <span className="text-red-600 font-semibold shrink-0">{item.value} ({pct}%)</span>
-                                    </div>
-                                    <div className="mt-0.5 h-1 w-full rounded-full bg-gray-100 overflow-hidden">
-                                      <div className="h-full rounded-full bg-red-400" style={{ width: `${Math.max(pct, 4)}%` }} />
-                                    </div>
-                                  </div>
-                                </button>
-                              )
-                            })}
-                            {hasMore && (
-                              <p className="text-xs text-gray-500 pt-0.5">+ {motivos.length - TOP_N} motivo(s)</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <MotivosPerdaSection
+          motivoPerdaData={motivoPerdaData}
+          motivoPerdaPorAreaData={motivoPerdaPorAreaData}
+          totalLost={resumo.lost}
+          expandMotivosGeral={expandMotivosGeral}
+          setExpandMotivosGeral={setExpandMotivosGeral}
+          expandedMotivosArea={expandedMotivosArea}
+          setExpandedMotivosArea={setExpandedMotivosArea}
+          filterListaPorMotivo={filterListaPorMotivo}
+          setFilterListaPorMotivo={setFilterListaPorMotivo}
+          areaIcons={AREA_ICONS}
+        />
       </DashboardSection>
+        </>
+      )}
 
-      {/* Coluna direita: Stage Funnel (Resumo) + Relatórios */}
-      <div className="space-y-6">
-      {/* Seção: Resumo por status (Stage Funnel) */}
+      {/* === ABA RELATÓRIOS === */}
+      {activeTab === 'relatorios' && (
+        <>
       <DashboardSection
-        icon={<BarChart2 className="h-5 w-5" />}
-        title="Resumo por status"
-        description="Distribuição Ganhas / Perdidas / Em andamento."
-      >
-        {resumoPieData.length === 0 ? (
-          <p className="text-sm text-gray-500 py-8 text-center">Nenhum dado.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={resumoPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" nameKey="name" label={({ name, value }) => `${name}: ${value}`}>
-                {resumoPieData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => [value, '']} />
-            </PieChart>
-          </ResponsiveContainer>
-        )}
-      </DashboardSection>
-
-      {/* Seção: Relatórios e mensagens */}
-      <DashboardSection
-        icon={<Send className="h-5 w-5" />}
-        title="Relatórios e mensagens"
+        icon={<FileBarChart className="h-5 w-5" />}
+        title="Relatórios"
         description="Monte mensagens a partir dos filtros. Copie ou envie no WhatsApp."
+        fullWidth
       >
-        <div className="flex flex-wrap items-center gap-3 mb-3">
-          <label htmlFor="report-type" className="text-sm font-medium text-gray-700">Tipo de relatório:</label>
-          <select
-            id="report-type"
-            value={reportType}
-            onChange={(e) => setReportType(e.target.value as ReportTypeOption)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-primary"
-          >
-            <option value="resumo">Resumo do período</option>
-            <option value="area">Leads por área</option>
-            <option value="solicitante">Leads por solicitante</option>
-            <option value="motivos">Motivos de perda (resumo)</option>
-            <option value="motivos-area">Motivos de perda por área</option>
-            <option value="tipo-lead">Leads por tipo de lead</option>
-            <option value="indicacao">Leads por indicação (categoria)</option>
-            <option value="nome-indicacao">Top indicadores (nome indicação)</option>
-            <option value="perdidas-anotacao">Perdidas com anotação do motivo</option>
-          </select>
+        {/* Cards de tipo de relatório */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6">
+          {([
+            { value: 'resumo' as const, label: 'Resumo do período' },
+            { value: 'area' as const, label: 'Leads por área' },
+            { value: 'solicitante' as const, label: 'Leads por solicitante' },
+            { value: 'motivos' as const, label: 'Motivos de perda' },
+            { value: 'motivos-area' as const, label: 'Motivos por área' },
+            { value: 'tipo-lead' as const, label: 'Por tipo de lead' },
+            { value: 'indicacao' as const, label: 'Por indicação' },
+            { value: 'nome-indicacao' as const, label: 'Top indicadores' },
+            { value: 'perdidas-anotacao' as const, label: 'Perdidas com anotação' },
+          ]).map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setReportType(value)}
+              className={cn(
+                'rounded-xl border-2 p-3 text-left text-sm font-medium transition-all',
+                reportType === value
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {/* Texto do relatório (centro) */}
+        <pre className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-800 whitespace-pre-wrap font-sans overflow-x-auto max-h-64 overflow-y-auto my-6">
+          {reportText}
+        </pre>
+        {/* Copiar + número + enviar WhatsApp (mesma tela) */}
+        <div className="flex flex-wrap items-end gap-3 pt-4 border-t border-gray-200">
           <button
             type="button"
             onClick={handleCopyReport}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
           >
             <Copy className="h-4 w-4" />
             {copyFeedback ? 'Copiado!' : 'Copiar mensagem'}
           </button>
-          <button
-            type="button"
-            onClick={openWppModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Enviar no WhatsApp
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="wpp-number-inline" className="text-sm font-medium text-gray-700">Número (WhatsApp):</label>
+            <input
+              id="wpp-number-inline"
+              type="text"
+              value={wppNumberInline}
+              onChange={(e) => setWppNumberInline(e.target.value)}
+              placeholder="5511999999999"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm w-40 focus:ring-2 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={sendWppReportInline}
+              disabled={wppSending || !wppNumberInline.trim() || !reportText.trim()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {wppSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+              Enviar no WhatsApp
+            </button>
+          </div>
         </div>
-        <pre className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-800 whitespace-pre-wrap font-sans overflow-x-auto max-h-48 overflow-y-auto">
-          {reportText}
-        </pre>
+        {wppError && (
+          <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{wppError}</div>
+        )}
       </DashboardSection>
-      </div>
-      </div>
+        </>
+      )}
 
-      {/* Seção: Tipo de lead, Indicação e Nome indicação — cards tecnológicos com ícones e manual */}
+      {/* === ABA ORIGEM === */}
+      {activeTab === 'origem' && (
+        <>
       <DashboardSection
         icon={<Users className="h-5 w-5" />}
         title="Tipo de lead, Indicação e Nome indicação"
@@ -1815,9 +1972,9 @@ export function AnalisePlanilha() {
                             <p className="font-semibold text-gray-900 text-center text-sm leading-tight truncate w-full">{tipoLeadComStatus[1].name}</p>
                             <p className="text-lg font-bold text-gray-800 mt-1">{tipoLeadComStatus[1].value} <span className="text-xs font-medium text-gray-500">({results.length > 0 ? Math.round((tipoLeadComStatus[1].value / results.length) * 100) : 0}%)</span></p>
                             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[1].won} vend.</span>
-                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[1].ongoing} and.</span>
-                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[1].lost} perd.</span>
+                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[1].won} vendidas</span>
+                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[1].ongoing} andamento</span>
+                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[1].lost} perdidas</span>
                             </div>
                             <div className="mt-2 h-1.5 w-full rounded-full bg-white/80 overflow-hidden">
                               <div className="h-full rounded-full bg-amber-500/80" style={{ width: `${Math.max(results.length > 0 ? (tipoLeadComStatus[1].value / results.length) * 100 : 0, 6)}%` }} />
@@ -1844,9 +2001,9 @@ export function AnalisePlanilha() {
                             <p className="font-semibold text-gray-900 text-center text-base leading-tight truncate w-full">{tipoLeadComStatus[0].name}</p>
                             <p className="text-xl font-bold text-gray-800 mt-1">{tipoLeadComStatus[0].value} <span className="text-xs font-medium text-gray-500">({results.length > 0 ? Math.round((tipoLeadComStatus[0].value / results.length) * 100) : 0}%)</span></p>
                             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[0].won} vend.</span>
-                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[0].ongoing} and.</span>
-                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[0].lost} perd.</span>
+                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[0].won} vendidas</span>
+                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[0].ongoing} andamento</span>
+                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[0].lost} perdidas</span>
                             </div>
                             <div className="mt-2 h-1.5 w-full rounded-full bg-white/80 overflow-hidden">
                               <div className="h-full rounded-full bg-violet-500/80" style={{ width: `${Math.max(results.length > 0 ? (tipoLeadComStatus[0].value / results.length) * 100 : 0, 6)}%` }} />
@@ -1876,9 +2033,9 @@ export function AnalisePlanilha() {
                             <p className="font-semibold text-gray-900 text-center text-sm leading-tight truncate w-full">{tipoLeadComStatus[2].name}</p>
                             <p className="text-lg font-bold text-gray-800 mt-1">{tipoLeadComStatus[2].value} <span className="text-xs font-medium text-gray-500">({results.length > 0 ? Math.round((tipoLeadComStatus[2].value / results.length) * 100) : 0}%)</span></p>
                             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[2].won} vend.</span>
-                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[2].ongoing} and.</span>
-                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[2].lost} perd.</span>
+                              <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{tipoLeadComStatus[2].won} vendidas</span>
+                              <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{tipoLeadComStatus[2].ongoing} andamento</span>
+                              <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{tipoLeadComStatus[2].lost} perdidas</span>
                             </div>
                             <div className="mt-2 h-1.5 w-full rounded-full bg-white/80 overflow-hidden">
                               <div className="h-full rounded-full bg-sky-500/80" style={{ width: `${Math.max(results.length > 0 ? (tipoLeadComStatus[2].value / results.length) * 100 : 0, 6)}%` }} />
@@ -1922,9 +2079,9 @@ export function AnalisePlanilha() {
                                   <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
                                   <p className="text-base font-bold text-gray-800">{item.value} <span className="text-xs font-medium text-gray-500">({pct}%)</span></p>
                                   <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-1">
-                                    <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{item.won} vend.</span>
-                                    <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{item.ongoing} and.</span>
-                                    <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{item.lost} perd.</span>
+                                    <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{item.won} vendidas</span>
+                                    <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{item.ongoing} andamento</span>
+                                    <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{item.lost} perdidas</span>
                                   </div>
                                 </div>
                               </div>
@@ -1964,9 +2121,9 @@ export function AnalisePlanilha() {
                                 <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
                                 <p className="text-xl font-bold text-gray-800">{item.value} <span className="text-xs font-medium text-gray-500">({pct}%)</span></p>
                                 <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-1">
-                                  <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{item.won} vend.</span>
-                                  <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{item.ongoing} and.</span>
-                                  <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{item.lost} perd.</span>
+                                  <span className="inline-flex rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">{item.won} vendidas</span>
+                                  <span className="inline-flex rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{item.ongoing} andamento</span>
+                                  <span className="inline-flex rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">{item.lost} perdidas</span>
                                 </div>
                               </div>
                             </div>
@@ -2028,11 +2185,17 @@ export function AnalisePlanilha() {
                                   </span>
                                   <span className="text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">Ver detalhes →</span>
                                 </div>
-                                {getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') && (
-                                  <p className="text-[10px] text-gray-500 mt-2 truncate" title={getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') ?? ''}>
-                                    {getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '')}
-                                  </p>
-                                )}
+                                {(() => {
+                                  const areaVal = getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '')
+                                  if (!areaVal) return null
+                                  const AreaIco = areaVal in AREA_ICONS ? AREA_ICONS[areaVal] : null
+                                  return (
+                                    <p className="flex items-center gap-1 text-[10px] text-gray-500 mt-2 truncate" title={areaVal}>
+                                      {AreaIco && <AreaIco className="h-3 w-3 flex-shrink-0 text-gray-400" />}
+                                      <span className="truncate">{areaVal}</span>
+                                    </p>
+                                  )
+                                })()}
                                 {lead.status === 'lost' && (lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao)?.trim() && (
                                   <p className="text-[10px] text-red-600/90 mt-2 line-clamp-2 leading-snug" title={String(lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao).trim()}>
                                     {String(lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao).trim()}
@@ -2140,9 +2303,9 @@ export function AnalisePlanilha() {
                             <div className="min-w-0 flex-1 text-left">
                               <span className="text-sm font-medium text-gray-800 truncate block" title={item.name}>{item.name}</span>
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-                                <span className="inline-flex items-center rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post" title="Vendidas">{item.won} vend.</span>
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600" title="Em andamento">{item.ongoing} and.</span>
-                                <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Perdidas">{item.lost} perd.</span>
+                                <span className="inline-flex items-center rounded-full bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post" title="Vendidas">{item.won} vendidas</span>
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600" title="Em andamento">{item.ongoing} andamento</span>
+                                <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700" title="Perdidas">{item.lost} perdidas</span>
                               </div>
                             </div>
                             <span className="text-sm font-bold text-primary shrink-0">{item.value} lead{item.value !== 1 ? 's' : ''}</span>
@@ -2201,11 +2364,17 @@ export function AnalisePlanilha() {
                                 </span>
                                 <span className="text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">Ver detalhes →</span>
                               </div>
-                              {getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') && (
-                                <p className="text-[10px] text-gray-500 mt-2 truncate" title={getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') ?? ''}>
-                                  {getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '')}
-                                </p>
-                              )}
+                              {(() => {
+                                const areaVal = getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '')
+                                if (!areaVal) return null
+                                const AreaIco = areaVal in AREA_ICONS ? AREA_ICONS[areaVal] : null
+                                return (
+                                  <p className="flex items-center gap-1 text-[10px] text-gray-500 mt-2 truncate" title={areaVal}>
+                                    {AreaIco && <AreaIco className="h-3 w-3 flex-shrink-0 text-gray-400" />}
+                                    <span className="truncate">{areaVal}</span>
+                                  </p>
+                                )
+                              })()}
                               {lead.status === 'lost' && (lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao)?.trim() && (
                                 <p className="text-[10px] text-red-600/90 mt-2 line-clamp-2 leading-snug" title={String(lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao).trim()}>
                                   {String(lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao).trim()}
@@ -2235,8 +2404,12 @@ export function AnalisePlanilha() {
           </div>
         )}
       </DashboardSection>
+        </>
+      )}
 
-      {/* Seção: Ranking de performance */}
+      {/* === ABA PERFORMANCE === */}
+      {activeTab === 'performance' && (
+        <>
       <DashboardSection
         icon={<Award className="h-5 w-5" />}
         title="Ranking de performance"
@@ -2261,6 +2434,7 @@ export function AnalisePlanilha() {
                     onClick={() => {
                       setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[1].emailKey ? null : performancePorSolicitante[1].emailKey)
+                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[1].emailKey}
                   />
@@ -2278,6 +2452,7 @@ export function AnalisePlanilha() {
                     onClick={() => {
                       setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[0].emailKey ? null : performancePorSolicitante[0].emailKey)
+                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[0].emailKey}
                   />
@@ -2295,6 +2470,7 @@ export function AnalisePlanilha() {
                     onClick={() => {
                       setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[2].emailKey ? null : performancePorSolicitante[2].emailKey)
+                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[2].emailKey}
                   />
@@ -2303,11 +2479,10 @@ export function AnalisePlanilha() {
                   </div>
                 </div>
               </div>
-              <p className="text-center text-sm text-gray-500 mt-3">Passe o mouse sobre o card para ver ganhas, perdidas e taxas</p>
             </div>
           )}
 
-          {/* Lista/grid de cards no mesmo estilo do pódio (demais colocados ou todos se menos de 3 no pódio) */}
+          {/* Lista/grid de cards (demais colocados ou todos se menos de 3 no pódio) */}
           <div className="mt-6">
             {performancePorSolicitante.length > 3 && (
               <h3 className="text-sm font-semibold text-gray-700 mb-4">Demais colocados</h3>
@@ -2315,16 +2490,19 @@ export function AnalisePlanilha() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {(expandRankingSolicitantes ? performancePorSolicitante : performancePorSolicitante.slice(0, TOP_N))
                 .filter((_, i) => performancePorSolicitante.length < 3 || i >= 3)
-                .map((p) => (
+                .map((p) => {
+                  const AreaIcon = p.area ? AREA_ICONS[p.area] : null
+                  return (
                   <button
                     key={p.emailKey}
                     type="button"
                     onClick={() => {
                       setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === p.emailKey ? null : p.emailKey)
+                      setActiveTab('leads')
                     }}
                     className={cn(
-                      'group flex flex-col items-center rounded-2xl border-2 px-4 py-4 text-center transition-all duration-300 hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[140px]',
+                      'group flex flex-col items-center rounded-2xl border-2 px-4 py-4 text-center transition-all duration-300 hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary/50',
                       selectedSolicitanteKey === p.emailKey ? 'border-post bg-post/10 ring-2 ring-post/30 shadow-lg' : 'border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 shadow-md'
                     )}
                   >
@@ -2342,26 +2520,27 @@ export function AnalisePlanilha() {
                       {p.nome}
                     </p>
                     {p.area && (
-                      <span className="mt-1 inline-block rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                        {AreaIcon && <AreaIcon className="h-3 w-3 shrink-0" />}
                         {p.area}
                       </span>
                     )}
-                    {/* Detalhes no hover - mesmo estilo do pódio */}
-                    <div className="mt-3 w-full pt-3 border-t border-gray-200/80 opacity-0 max-h-0 overflow-hidden group-hover:opacity-100 group-hover:max-h-32 transition-all duration-300 text-left">
-                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
-                        <span className="text-post font-semibold">{p.won} ganhas</span>
-                        <span className="text-red-600">{p.lost} perdidas</span>
-                        <span className="text-gray-500">{p.ongoing} and.</span>
+                    {/* Status e taxas — centralizado, número sem % */}
+                    <div className="mt-3 w-full pt-3 border-t border-gray-200/80 text-center">
+                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-0.5 text-xs">
+                        <span className="text-post font-semibold">{p.won} Ganhas</span>
+                        <span className="text-red-600">{p.lost} Perdidas</span>
+                        <span className="text-gray-600">{p.ongoing} Em andamento</span>
                       </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      <div className="mt-2 flex flex-wrap justify-center items-center gap-2">
+                        <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary" title="Taxa de conversão">
                           <Percent className="h-2.5 w-2.5" />
-                          {p.conversionRate}%
+                          Conversão: {p.conversionRate}
                         </span>
                         {p.won + p.lost > 0 && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post">
+                          <span className="inline-flex items-center gap-0.5 rounded bg-post/15 px-1.5 py-0.5 text-[10px] font-semibold text-post" title="Win rate">
                             <Target className="h-2.5 w-2.5" />
-                            {p.winRate}%
+                            Win rate: {p.winRate}
                           </span>
                         )}
                       </div>
@@ -2372,7 +2551,7 @@ export function AnalisePlanilha() {
                       </div>
                     </div>
                   </button>
-                ))}
+                  ); })}
             </div>
             {performancePorSolicitante.length > TOP_N && (
               <button
@@ -2391,8 +2570,12 @@ export function AnalisePlanilha() {
         </>
       )}
       </DashboardSection>
+        </>
+      )}
 
-      {/* Seção: Lista de leads (logo abaixo do pódio; filtrada por solicitante ou motivo ao clicar) */}
+      {/* === ABA LEADS === */}
+      {activeTab === 'leads' && (
+        <>
       <DashboardSection
         icon={<Table2 className="h-5 w-5" />}
         title="Lista de leads"
@@ -2403,6 +2586,72 @@ export function AnalisePlanilha() {
         }
         fullWidth
       >
+        {/* Filtros da aba Leads */}
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
+          <label className="text-sm font-medium text-gray-700">Etapa:</label>
+          <select
+            value={filterLeadsEtapa}
+            onChange={(e) => setFilterLeadsEtapa(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Todas</option>
+            {etapasDisponiveisParaFiltro.map((e) => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
+          <label className="text-sm font-medium text-gray-700">Nome lead:</label>
+          <input
+            type="text"
+            value={filterLeadsNome}
+            onChange={(e) => setFilterLeadsNome(e.target.value)}
+            placeholder="Pesquisar..."
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm w-40"
+          />
+          <label className="text-sm font-medium text-gray-700">Funil:</label>
+          <select
+            value={filterLeadsFunil}
+            onChange={(e) => setFilterLeadsFunil(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Todos</option>
+            {funisDisponiveis.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <label className="text-sm font-medium text-gray-700">Status:</label>
+          <select
+            value={filterLeadsStatus}
+            onChange={(e) => setFilterLeadsStatus(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="win">Ganhas</option>
+            <option value="lost">Perdidas</option>
+            <option value="ongoing">Em andamento</option>
+          </select>
+          <label className="text-sm font-medium text-gray-700">Solicitante:</label>
+          <select
+            value={filterLeadsSolicitante}
+            onChange={(e) => setFilterLeadsSolicitante(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Todos</option>
+            {solicitantesDisponiveis.map(({ key, nome }) => (
+              <option key={key} value={key}>{nome}</option>
+            ))}
+          </select>
+          <label className="text-sm font-medium text-gray-700">Área:</label>
+          <select
+            value={filterLeadsArea}
+            onChange={(e) => setFilterLeadsArea(e.target.value)}
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          >
+            <option value="">Todas</option>
+            {areasDisponiveis.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </div>
         {(selectedSolicitanteKey || filterListaPorMotivo) && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
@@ -2423,96 +2672,102 @@ export function AnalisePlanilha() {
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto -mx-2">
-              <table className="w-full min-w-[640px] text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-600 font-medium">
-                    <th className="py-2 px-2 w-16">Ver</th>
-                    <th className="py-2 px-2">Nome / Lead</th>
-                    <th className="py-2 px-2">Razão social</th>
-                    <th className="py-2 px-2">Etapa</th>
-                    <th className="py-2 px-2">Funil</th>
-                    <th className="py-2 px-2">Status</th>
-                    <th className="py-2 px-2">Anotação motivo</th>
-                    <th className="py-2 px-2">Solicitante</th>
-                    <th className="py-2 px-2">Área</th>
-                    <th className="py-2 px-2">Criação</th>
-                    <th className="py-2 px-2">Atualização</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...listaLeadsFiltrada]
-                    .sort((a, b) => {
-                      const da = a.created_at_iso || ''
-                      const db = b.created_at_iso || ''
-                      return db.localeCompare(da)
-                    })
-                    .slice(0, expandListaLeads ? undefined : LISTA_LEADS_INICIAL)
-                    .map((lead) => (
-                    <tr key={lead.rowIndex} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-2.5 px-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedLead(lead)
-                          }}
-                          className="rounded-md px-2 py-1 text-xs font-medium bg-primary text-white hover:bg-primary/90"
-                        >
-                          Ver
-                        </button>
-                      </td>
-                      <td className="py-2.5 px-2 font-medium text-gray-900 max-w-[180px] truncate" title={lead.nome_lead || lead.id_registro || ''}>
-                        {lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-700 max-w-[180px] truncate" title={lead.razao_social || ''}>
-                        {lead.razao_social || '—'}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-600 max-w-[140px] truncate">{lead.stage_name || '—'}</td>
-                      <td className="py-2.5 px-2 text-gray-600 max-w-[140px] truncate">{lead.funil || '—'}</td>
-                      <td className="py-2.5 px-2">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                            lead.status === 'win' && 'bg-post/20 text-post',
-                            lead.status === 'lost' && 'bg-red-100 text-red-700',
-                            (lead.status === 'ongoing' || (!lead.status || (lead.status !== 'win' && lead.status !== 'lost'))) && 'bg-gray-100 text-gray-700'
-                          )}
-                        >
-                          {lead.status === 'win' ? 'Ganha' : lead.status === 'lost' ? 'Perdida' : 'Em andamento'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-600 max-w-[200px]" title={lead.status === 'lost' ? (lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao) ?? undefined : undefined}>
-                        {lead.status === 'lost' && (lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao)?.trim()
-                          ? <span className="line-clamp-2 text-left">{String(lead.motivo_perda_anotacao ?? lead.planilha?.motivo_perda_anotacao).trim()}</span>
-                          : '—'}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-600 max-w-[140px] truncate">
-                        {getSolicitanteLabel((lead.email_solicitante ?? lead.email_notificar ?? '') || '')}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-600 max-w-[120px] truncate" title={getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') ?? ''}>
-                        {getAreaByEmail((lead.email_solicitante ?? lead.email_notificar ?? '') || '') ?? '—'}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-700 whitespace-nowrap" title="Data de criação (Date_Create)">
-                        {lead.created_at_iso
-                          ? new Date(lead.created_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                          : '—'}
-                      </td>
-                      <td className="py-2.5 px-2 text-gray-500 whitespace-nowrap" title="Data de atualização (Date_Update)">
-                        {lead.updated_at_iso
-                          ? new Date(lead.updated_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                          : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...listaLeadsFiltrada]
+                .sort((a, b) => {
+                  const da = a.created_at_iso || ''
+                  const db = b.created_at_iso || ''
+                  return db.localeCompare(da)
+                })
+                .slice(0, expandListaLeads ? undefined : LISTA_LEADS_INICIAL)
+                .map((lead) => {
+                  const nome = lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`
+                  const inicial = nome.charAt(0).toUpperCase()
+                  const leadEmail = (lead.email_solicitante ?? lead.email_notificar ?? '') || ''
+                  const solicitanteAvatar = getTeamMember(leadEmail)?.avatar ?? null
+                  const areaLabel = getAreaByEmail(leadEmail) ?? ''
+                  const AreaIconComp = areaLabel ? AREA_ICONS[areaLabel] : null
+                  return (
+                    <div
+                      key={lead.rowIndex}
+                      className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/30 hover:bg-gray-50/50"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-base ring-2 ring-primary/20">
+                          {inicial}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-gray-900 truncate" title={nome}>{nome}</p>
+                          <p className="text-sm text-gray-600 truncate mt-0.5" title={lead.razao_social || ''}>
+                            {lead.razao_social || '—'}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                                lead.status === 'win' && 'bg-post/20 text-post',
+                                lead.status === 'lost' && 'bg-red-100 text-red-700',
+                                (lead.status === 'ongoing' || (!lead.status || (lead.status !== 'win' && lead.status !== 'lost'))) && 'bg-sky-100 text-sky-700'
+                              )}
+                            >
+                              {lead.status === 'win' ? 'Ganha' : lead.status === 'lost' ? 'Perdida' : 'Em andamento'}
+                            </span>
+                            {lead.stage_name && (
+                              <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 truncate max-w-[120px]" title={lead.stage_name}>
+                                {lead.stage_name}
+                              </span>
+                            )}
+                            {lead.funil && (
+                              <span className="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary truncate max-w-[100px]" title={lead.funil}>
+                                {lead.funil}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2 flex items-center gap-2 min-w-0">
+                            {solicitanteAvatar ? (
+                              <img src={solicitanteAvatar} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white shadow flex-shrink-0" />
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
+                                {(getSolicitanteLabel(leadEmail) || '?').charAt(0)}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-gray-800 truncate" title={getSolicitanteLabel(leadEmail)}>
+                                {getSolicitanteLabel(leadEmail) || '—'}
+                              </span>
+                              {AreaIconComp && (
+                                <span className="flex-shrink-0 text-primary" title={areaLabel}>
+                                  <AreaIconComp className="h-3.5 w-3.5" />
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {lead.created_at_iso
+                              ? new Date(lead.created_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                              : '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedLead(lead)
+                        }}
+                        className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
+                      >
+                        Ver detalhes
+                      </button>
+                    </div>
+                  )
+                })}
             </div>
             {listaLeadsFiltrada.length > LISTA_LEADS_INICIAL && (
               <button
                 type="button"
                 onClick={() => setExpandListaLeads(!expandListaLeads)}
-                className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                className="mt-4 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
               >
                 {expandListaLeads ? (
                   <>Mostrar menos (primeiros {LISTA_LEADS_INICIAL}) <ChevronUp className="h-4 w-4" /></>
@@ -2659,8 +2914,12 @@ export function AnalisePlanilha() {
           </div>
         </div>
       </DashboardSection>
+        </>
+      )}
 
-      {/* Seção: Leads perdidas por solicitante */}
+      {/* === ABA PERDAS (Leads perdidas por solicitante) === */}
+      {activeTab === 'perdas' && (
+        <>
       <DashboardSection
         icon={<Activity className="h-5 w-5" />}
         title="Leads perdidas por solicitante"
@@ -2670,32 +2929,50 @@ export function AnalisePlanilha() {
           <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead perdida.</p>
         ) : (
           <>
-            <div className="flex flex-wrap gap-3">
-              {(expandPerdidasSolicitante ? perdidasPorSolicitante : perdidasPorSolicitante.slice(0, TOP_N)).map((item, idx) => (
-                <div
-                  key={item.emailKey}
-                  className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50/50 px-4 py-3"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">
-                    {idx + 1}
-                  </span>
-                  {item.avatar ? (
-                    <img src={item.avatar} alt="" className="h-10 w-10 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 text-gray-500 text-sm font-medium">
-                      {(item.nome || '?').charAt(0)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(expandPerdidasSolicitante ? perdidasPorSolicitante : perdidasPorSolicitante.slice(0, TOP_N)).map((item, idx) => {
+                const areaLabel = item.emailKey !== '(sem e-mail)' ? getAreaByEmail(item.emailKey) : null
+                const AreaIconCard = areaLabel && areaLabel in AREA_ICONS ? AREA_ICONS[areaLabel] : null
+                return (
+                  <div
+                    key={item.emailKey}
+                    className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-red-200/50 transition-all"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-100 text-sm font-bold text-red-700">
+                      {idx + 1}
+                    </span>
+                    {item.avatar ? (
+                      <img src={item.avatar} alt="" className="h-12 w-12 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" />
+                    ) : (
+                      <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-600 text-base font-semibold">
+                        {(item.nome || '?').charAt(0)}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 truncate" title={item.nome}>{item.nome}</p>
+                      {(areaLabel || AreaIconCard) && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {AreaIconCard && (
+                            <span className="flex-shrink-0 text-red-600/80">
+                              <AreaIconCard className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500 truncate" title={areaLabel ?? ''}>{areaLabel ?? '—'}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <span className="font-medium text-gray-800">{item.nome}</span>
-                  <span className="rounded-full bg-red-100 px-3 py-0.5 text-sm font-semibold text-red-700">{item.total}</span>
-                </div>
-              ))}
+                    <span className="flex-shrink-0 rounded-xl bg-red-100 px-3 py-1.5 text-sm font-bold text-red-700 tabular-nums">
+                      <CountUpValue value={item.total} />
+                    </span>
+                  </div>
+                )
+              })}
             </div>
             {perdidasPorSolicitante.length > TOP_N && (
               <button
                 type="button"
                 onClick={() => setExpandPerdidasSolicitante(!expandPerdidasSolicitante)}
-                className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 {expandPerdidasSolicitante ? (
                   <>Mostrar menos <ChevronUp className="h-4 w-4" /></>
@@ -2707,45 +2984,112 @@ export function AnalisePlanilha() {
           </>
         )}
       </DashboardSection>
+        </>
+      )}
 
-      {/* Lista de leads vendidas (ao clicar no card Ganhas ou em um solicitante) */}
-      {showWonLeadsPanel && resumo.won > 0 && (
+      {/* Lista de leads (ao clicar no card Ganhas ou em um vendedor na Performance) — visível em qualquer aba */}
+      {showWonLeadsPanel && (resumo.won > 0 || selectedSolicitanteKey) && (
         <DashboardSection
           icon={<Users className="h-5 w-5" />}
-          title={selectedSolicitanteKey ? `Leads vendidas: ${getSolicitanteLabel(selectedSolicitanteKey === '(sem e-mail)' ? '' : selectedSolicitanteKey)}` : 'Leads vendidas'}
+          title={selectedSolicitanteKey ? `Leads: ${getSolicitanteLabel(selectedSolicitanteKey === '(sem e-mail)' ? '' : selectedSolicitanteKey)}` : 'Leads vendidas'}
           description="Clique em um lead para ver detalhes."
           fullWidth
         >
-          <div className="flex items-center justify-end mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            {selectedSolicitanteKey && (
+              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 p-1">
+                {[
+                  { value: 'all' as const, label: 'Todos' },
+                  { value: 'win' as const, label: 'Vendidas' },
+                  { value: 'lost' as const, label: 'Perdidas' },
+                  { value: 'ongoing' as const, label: 'Em andamento' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFilterLeadsPanelStatus(value)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                      filterLeadsPanelStatus === value
+                        ? 'bg-white text-primary shadow border border-gray-200'
+                        : 'text-gray-600 hover:bg-white/60'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => {
                 setShowWonLeadsPanel(false)
                 setSelectedSolicitanteKey(null)
               }}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Fechar lista
             </button>
           </div>
-          {wonLeadsFiltradasPorSolicitante.length === 0 ? (
-            <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead para exibir.</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {wonLeadsFiltradasPorSolicitante.map((lead) => (
-                <button
-                  key={lead.rowIndex}
-                  type="button"
-                  onClick={() => setSelectedLead(lead)}
-                  className="rounded-lg border border-gray-200 bg-gray-50/50 p-4 text-left hover:border-post hover:bg-post/5 transition-colors"
-                >
-                  <p className="font-medium text-gray-900 truncate">{lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`}</p>
-                  <p className="text-sm text-gray-600 truncate">{lead.razao_social || '—'}</p>
-                  <p className="text-xs text-gray-500 mt-1">{lead.stage_name || ''} · {lead.funil || ''}</p>
-                </button>
-              ))}
+          {(() => {
+            const listToShow = selectedSolicitanteKey ? leadsPainelFiltradasPorStatus : wonLeadsFiltradasPorSolicitante
+            if (listToShow.length === 0) {
+              return <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead para exibir.</p>
+            }
+            return (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {listToShow.map((lead) => {
+                const nome = lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`
+                const inicial = nome.charAt(0).toUpperCase()
+                return (
+                  <button
+                    key={lead.rowIndex}
+                    type="button"
+                    onClick={() => setSelectedLead(lead)}
+                    className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-post/40 hover:bg-post/5"
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-post/15 text-post font-bold text-lg ring-2 ring-post/20 group-hover:ring-post/40 transition-colors">
+                      {inicial}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 truncate" title={nome}>{nome}</p>
+                      <p className="text-sm text-gray-600 truncate mt-0.5" title={lead.razao_social || ''}>
+                        {lead.razao_social || '—'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-2">
+                        {selectedSolicitanteKey && (
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                              lead.status === 'win' && 'bg-post/20 text-post',
+                              lead.status === 'lost' && 'bg-red-100 text-red-700',
+                              (lead.status === 'ongoing' || !lead.status) && 'bg-sky-100 text-sky-700'
+                            )}
+                          >
+                            {lead.status === 'win' ? 'Vendida' : lead.status === 'lost' ? 'Perdida' : 'Em andamento'}
+                          </span>
+                        )}
+                        {lead.stage_name && (
+                          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                            {lead.stage_name}
+                          </span>
+                        )}
+                        {lead.funil && (
+                          <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            {lead.funil}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-gray-400 group-hover:text-post transition-colors" aria-hidden>
+                      →
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-          )}
+            )
+          })()}
         </DashboardSection>
       )}
 
@@ -2777,46 +3121,75 @@ export function AnalisePlanilha() {
         if (outrosKeys.length > 0) {
           sections.push({ title: 'Outros (planilha)', keys: outrosKeys })
         }
+        const modalLeadEmail = (selectedLead.email_solicitante ?? selectedLead.email_notificar ?? '') || ''
+        const modalAvatar = getTeamMember(modalLeadEmail)?.avatar ?? null
+        const modalArea = getAreaByEmail(modalLeadEmail) ?? ''
+        const ModalAreaIcon = modalArea ? AREA_ICONS[modalArea] : null
+        const modalStatus = selectedLead.status === 'win' ? 'Ganha' : selectedLead.status === 'lost' ? 'Perdida' : 'Em andamento'
+        const modalStatusClass = selectedLead.status === 'win' ? 'bg-post/20 text-post' : selectedLead.status === 'lost' ? 'bg-red-100 text-red-700' : 'bg-sky-100 text-sky-700'
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b border-gray-200">
-                <h2 className="font-semibold text-gray-900">Detalhe da negociação ganha</h2>
-                <button type="button" onClick={() => setSelectedLead(null)} className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100" aria-label="Fechar">
-                  <X className="h-5 w-5" />
-                </button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" onClick={() => setSelectedLead(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex-shrink-0 relative px-5 py-4 border-b border-gray-200 bg-gray-50/50">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-semibold text-gray-900 truncate pr-8">
+                      {selectedLead.nome_lead || selectedLead.id_registro || `Linha ${selectedLead.rowIndex}`}
+                    </h2>
+                    {selectedLead.razao_social && (
+                      <p className="text-sm text-gray-600 truncate mt-0.5">{selectedLead.razao_social}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold', modalStatusClass)}>
+                        {modalStatus}
+                      </span>
+                      {selectedLead.stage_name && (
+                        <span className="inline-flex rounded-md bg-gray-200/80 px-2 py-0.5 text-xs font-medium text-gray-700">
+                          {selectedLead.stage_name}
+                        </span>
+                      )}
+                      {selectedLead.funil && (
+                        <span className="inline-flex rounded-md bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                          {selectedLead.funil}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setSelectedLead(null)} className="absolute top-4 right-4 p-2 rounded-xl text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors" aria-label="Fechar">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-white px-3 py-2.5 shadow-sm">
+                  {modalAvatar ? (
+                    <img src={modalAvatar} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold">
+                      {(getSolicitanteLabel(modalLeadEmail) || '?').charAt(0)}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900">{getSolicitanteLabel(modalLeadEmail) || '—'}</p>
+                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                      {ModalAreaIcon && <ModalAreaIcon className="h-3.5 w-3.5 text-primary" />}
+                      {modalArea || '—'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Nome / Registro</p>
-                  <p className="font-medium text-gray-900">{selectedLead.nome_lead || selectedLead.id_registro || `Linha ${selectedLead.rowIndex}`}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Razão Social</p>
-                  <p className="text-gray-800">{selectedLead.razao_social || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Etapa · Funil</p>
-                  <p className="text-gray-800">{selectedLead.stage_name || '—'} · {selectedLead.funil || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Solicitante</p>
-                  <p className="text-gray-800">{getSolicitanteLabel((selectedLead.email_solicitante ?? selectedLead.email_notificar ?? '') || '')}</p>
-                </div>
-
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
                 {sections.map(({ title, keys }) => {
                   const items = keys
                     .filter((k) => hasValue(planilha[k]))
                     .map((k) => ({ key: k, label: PLANILHA_LABELS[k] || k.replace(/_/g, ' '), value: String(planilha[k]).trim() }))
                   if (items.length === 0) return null
                   return (
-                    <div key={title} className="rounded-lg border border-gray-100 bg-gray-50/80 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide pb-1 border-b border-gray-200">{title}</p>
-                      <dl className="grid gap-1.5 text-sm">
+                    <div key={title} className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wider pb-2 border-b border-gray-200">{title}</p>
+                      <dl className="grid gap-2 text-sm">
                         {items.map(({ key, label, value }) => (
-                          <div key={key} className="flex flex-col sm:flex-row sm:gap-2">
-                            <dt className="text-gray-600 font-medium shrink-0 sm:w-48">{label}</dt>
-                            <dd className="text-gray-900 break-words">{value}</dd>
+                          <div key={key} className="flex flex-col sm:flex-row sm:gap-3 sm:items-start">
+                            <dt className="text-gray-600 font-medium shrink-0 sm:w-44">{label}</dt>
+                            <dd className="text-gray-900 break-words mt-0.5 sm:mt-0">{value}</dd>
                           </div>
                         ))}
                       </dl>
@@ -2825,12 +3198,12 @@ export function AnalisePlanilha() {
                 })}
 
                 {(selectedLead.created_at_iso || selectedLead.updated_at_iso) && (
-                  <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Data criação · Data atualização</p>
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium">Criação:</span> {selectedLead.created_at_iso ? new Date(selectedLead.created_at_iso).toLocaleString('pt-BR') : '—'}
-                      {' · '}
-                      <span className="font-medium">Atualização:</span> {selectedLead.updated_at_iso ? new Date(selectedLead.updated_at_iso).toLocaleString('pt-BR') : '—'}
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wider pb-2 border-b border-gray-200">Datas</p>
+                    <p className="text-sm text-gray-700 mt-2">
+                      <span className="font-medium text-gray-800">Criação:</span> {selectedLead.created_at_iso ? new Date(selectedLead.created_at_iso).toLocaleString('pt-BR') : '—'}
+                      <span className="mx-2 text-gray-300">·</span>
+                      <span className="font-medium text-gray-800">Atualização:</span> {selectedLead.updated_at_iso ? new Date(selectedLead.updated_at_iso).toLocaleString('pt-BR') : '—'}
                     </p>
                   </div>
                 )}
@@ -2839,7 +3212,7 @@ export function AnalisePlanilha() {
                     href={`${RD_CRM_DEAL_URL}${selectedLead.deal_id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 shadow-md hover:shadow-lg transition-all"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Abrir no RD Station

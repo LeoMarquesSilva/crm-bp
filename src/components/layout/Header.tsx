@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, ExternalLink, BarChart3, Clock, PieChart, LogOut } from 'lucide-react'
+import { TrendingUp, ExternalLink, BarChart3, Clock, LogOut } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clearAuthenticated } from '@/lib/auth'
 
@@ -7,8 +7,7 @@ export function Header() {
   const { pathname } = useLocation()
   const isValidacao = pathname === '/validacao'
   const isSla = pathname === '/sla'
-  const isDashboardBi = pathname === '/dashboard-bi'
-  const isAnalisePlanilha = pathname === '/analise-planilha'
+  const isDashboard = pathname === '/analise-planilha'
 
   return (
     <header 
@@ -58,26 +57,15 @@ export function Header() {
             SLA
           </Link>
           <Link
-            to="/dashboard-bi"
+            to="/analise-planilha"
             className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
-              isDashboardBi
+              isDashboard
                 ? 'text-white bg-white/20 border-white/30'
                 : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
             }`}
           >
             <BarChart3 className="h-4 w-4" />
-            Dashboard BI
-          </Link>
-          <Link
-            to="/analise-planilha"
-            className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
-              isAnalisePlanilha
-                ? 'text-white bg-white/20 border-white/30'
-                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
-            }`}
-          >
-            <PieChart className="h-4 w-4" />
-            Análise
+            Dashboard
           </Link>
         </motion.nav>
 

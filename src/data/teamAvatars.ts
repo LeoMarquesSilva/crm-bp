@@ -79,12 +79,12 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
   },
   'wagner.armani@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/wagner.jpg`,
-    tag: 'Reestruturação',
+    tag: 'Societário e Contratos',
     name: 'Wagner Armani',
   },
   'jansonn@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/jansonn.jpg`,
-    tag: 'Reestruturação',
+    tag: 'Societário e Contratos',
     name: 'Jansonn Mendonça Batista',
   },
   // Operações Legais

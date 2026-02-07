@@ -689,25 +689,25 @@ function validarConfecaoProposta(data, config) {
 
   const scope = 'confecao_proposta'
 
-  // Razão Social [CP] – MAIÚSCULO para PJ
-  const razaoSocialCp = (get('razao_social_completa') ?? get('razao_social') ?? '').toString().trim()
+  // Razão Social [CP] – MAIÚSCULO para PJ (coluna pode ser razao_social_completa ou razao_social → mesma chave)
+  const razaoSocialCp = (get('razao_social_completa') ?? get('razao_social') ?? get('razao_social_cp') ?? '').toString().trim()
   if (vazio(razaoSocialCp))
     add(scope, 'razao_social_cp', 'Razão Social [CP]', 'Campo obrigatório.', 'Nome jurídico em MAIÚSCULO. Ex.: ALFA SOLUÇÕES LTDA', razaoSocialCp)
 
-  // CNPJ [CP] – formato Receita Federal
-  const cnpjCp = (get('cnpj') ?? get('cnpj') ?? '').toString().trim()
+  // CNPJ [CP] – formato Receita Federal (coluna pode ser cnpj, cnpj_cpf ou cnpj_cp → data usa cnpj ou cnpj_cp)
+  const cnpjCp = (get('cnpj') ?? get('cnpj_cp') ?? '').toString().trim()
   if (vazio(cnpjCp))
     add(scope, 'cnpj_cp', 'CNPJ [CP]', 'Campo obrigatório.', 'CNPJ ou CPF no formato da Receita Federal.', cnpjCp)
 
-  // Qualificação completa (endereço, CEP, e-mail etc.) – aceita "N/A" se não aplicável
+  // Qualificação completa (endereço, CEP, e-mail etc.) – aceita "N/A" se não aplicável (chave: qualificacao_completa)
   const qualificacao = (get('qualificacao_completa') ?? '').toString().trim()
   if (vazio(qualificacao))
     add(scope, 'qualificacao_completa', 'Qualificação completa [CP]', 'Campo obrigatório.', 'Endereço completo, CEP e e-mail corporativo. Ou "N/A".', qualificacao)
   else if (qualificacao.toLowerCase() !== 'n/a' && qualificacao.length < 10)
     add(scope, 'qualificacao_completa', 'Qualificação completa [CP]', 'Dados insuficientes.', 'Preencha endereço, CEP e e-mail ou use "N/A".', qualificacao)
 
-  // Áreas Objeto do contrato [CP]
-  const areasObjeto = get('areas_cp')
+  // Áreas Objeto do contrato [CP] — coluna na planilha pode ser "areas_cp" (mapeada para areas_objeto_contrato_cp em data)
+  const areasObjeto = get('areas_objeto_contrato_cp') ?? get('areas_cp')
   const areasObjetoPreenchido = (val) => {
     if (val == null) return false
     if (Array.isArray(val)) return val.length > 0 && val.some((x) => x != null && String(x).trim() !== '')
@@ -717,24 +717,24 @@ function validarConfecaoProposta(data, config) {
   if (!areasObjetoPreenchido(areasObjeto))
     add(scope, 'areas_objeto_contrato_cp', 'Áreas Objeto do contrato [CP]', 'Campo obrigatório.', 'Selecione ao menos uma área (Cível, Tributário, etc.).', areasObjeto)
 
-  // Realizou Due Diligence? [CP]
+  // Realizou Due Diligence? [CP] (coluna pode ser realizou_due_diligence ou realizou_due_diligence_cp → mesma chave)
   const realizouDue = (get('realizou_due_diligence') ?? '').toString().trim().toLowerCase()
   if (vazio(realizouDue) || (realizouDue !== 'sim' && realizouDue !== 'nao' && realizouDue !== 'não'))
     add(scope, 'realizou_due_diligence', 'Realizou Due Diligence? [CP]', 'Campo obrigatório.', 'Selecione "Sim" ou "Não".', get('realizou_due_diligence'))
 
-  // Gestor do Contrato [CP]
-  const gestorContrato = (get('gestor_contrato_cp') ?? '').toString().trim()
+  // Gestor do Contrato [CP] (coluna pode ser gestor_do_contrato_cp, gestor_contrato_cp, gestor_do_contrato, gestor_contrato → chave gestor_contrato_cp)
+  const gestorContrato = (get('gestor_contrato_cp') ?? get('gestor_contrato') ?? '').toString().trim()
   if (vazio(gestorContrato))
     add(scope, 'gestor_contrato_cp', 'Gestor do Contrato [CP]', 'Campo obrigatório.', 'Nome completo do colaborador responsável.', gestorContrato)
 
-  const nomePf = (get('nome_ponto_focal') ?? '').toString().trim()
+  const nomePf = (get('nome_ponto_focal') ?? get('nome_do_ponto_focal') ?? '').toString().trim()
   if (vazio(nomePf)) {
     add(scope, 'nome_ponto_focal', 'Nome do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'Nome completo. Ex.: Maria Costa Silva', nomePf)
   } else if (!nomeCompletoValido(nomePf)) {
     add(scope, 'nome_ponto_focal', 'Nome do ponto focal / Comercial [CP]', 'Informe nome completo (nome e sobrenome).', 'Ex.: Maria Costa Silva — não use apenas o primeiro nome.', nomePf)
   }
 
-  const emailPf = (get('email_ponto_focal') ?? '').toString().trim()
+  const emailPf = (get('email_ponto_focal') ?? get('email_do_ponto_focal') ?? '').toString().trim()
   if (vazio(emailPf)) {
     add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'E-mail corporativo válido.', emailPf)
   } else if (!REGEX_EMAIL.test(emailPf)) {
@@ -743,45 +743,45 @@ function validarConfecaoProposta(data, config) {
     add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', emailPf)
   }
 
-  const telPf = (get('telefone_ponto_focal') ?? '').toString().trim()
+  const telPf = (get('telefone_ponto_focal') ?? get('telefone_do_ponto_focal') ?? '').toString().trim()
   if (vazio(telPf)) {
     add(scope, 'telefone_ponto_focal', 'Telefone do ponto focal / Comercial [CP]', 'Campo obrigatório.', '(DD) 9XXXX-XXXX ou (DD) XXXX-XXXX', telPf)
   } else if (!telefoneValido(telPf)) {
     add(scope, 'telefone_ponto_focal', 'Telefone do ponto focal / Comercial [CP]', 'Telefone inválido ou incompleto.', 'Inclua DDD e número. Ex.: (11) 91234-5678 ou (11) 1234-5678', telPf)
   }
 
-  // Captador [CP]
-  const captador = (get('captador_cp') ?? '').toString().trim()
+  // Captador [CP] (coluna pode ser captador_cp ou captador → chave captador_cp)
+  const captador = (get('captador_cp') ?? get('captador') ?? '').toString().trim()
   if (vazio(captador))
     add(scope, 'captador_cp', 'Captador [CP]', 'Campo obrigatório.', 'Nome ou identificação do colaborador que captou o lead.', captador)
 
-  // Tributação [CP] – Líquido/Englobando Tributos ou Bruto/Sem Tributos
-  const tributacao = (get('tributacao_cp') ?? '').toString().trim().toLowerCase()
-  const tributacaoOk = tributacao.includes('liquido') || tributacao.includes('bruto') || tributacao.includes('englobando') || tributacao.includes('sem tributos')
+  // Tributação [CP] – Líquido/Englobando Tributos ou Bruto/Sem Tributos (coluna pode ser tributacao_cp ou tributacao → chave tributacao_cp)
+  const tributacao = (get('tributacao_cp') ?? get('tributacao') ?? '').toString().trim().toLowerCase()
+  const tributacaoOk = tributacao.includes('valor líquido de tributos') || tributacao.includes('bruto') || tributacao.includes('englobando') || tributacao.includes('sem tributos')
   if (vazio(tributacao) || !tributacaoOk)
-    add(scope, 'tributacao_cp', 'Tributação [CP]', 'Campo obrigatório.', 'Líquido/Englobando Tributos ou Bruto/Sem Tributos', get('tributacao_cp'))
+    add(scope, 'tributacao_cp', 'Tributação [CP]', 'Campo obrigatório.', 'Líquido/Englobando Tributos ou Bruto/Sem Tributos', tributacao || (get('tributacao_cp') ?? get('tributacao')))
 
-  // Prazo para entrega (mínimo 2 dias úteis) [CP] – data DD/MM/AAAA
-  const prazoEntrega = (get('prazo_entrega_cp') ?? '').toString().trim()
+  // Prazo para entrega (mínimo 2 dias úteis) [CP] – data DD/MM/AAAA (coluna pode ser prazo_para_entrega_cp, prazo_entrega_cp, prazo_para_entrega → chave prazo_entrega_cp)
+  const prazoEntrega = (get('prazo_entrega_cp') ?? get('prazo_para_entrega_cp') ?? get('prazo_para_entrega') ?? '').toString().trim()
   if (vazio(prazoEntrega))
     add(scope, 'prazo_entrega_cp', 'Prazo para entrega [CP]', 'Campo obrigatório.', 'Formato DD/MM/AAAA. Mínimo 2 dias úteis.', prazoEntrega)
   else if (!dataDDMMAAAAValida(prazoEntrega) && !prazoEntrega.toLowerCase().includes('exceção'))
     add(scope, 'prazo_entrega_cp', 'Prazo para entrega [CP]', 'Data inválida.', 'Formato DD/MM/AAAA. Exceção: informar motivo.', prazoEntrega)
 
-  // Data do primeiro vencimento [CP]
-  const dataPrimeiroVenc = (get('data_primeiro_vencimento_cp') ?? '').toString().trim()
+  // Data do primeiro vencimento [CP] (coluna pode ser data_do_primeiro_vencimento_cp, data_primeiro_vencimento_cp, etc. → chave data_primeiro_vencimento_cp)
+  const dataPrimeiroVenc = (get('data_primeiro_vencimento_cp') ?? get('data_do_primeiro_vencimento_cp') ?? get('data_primeiro_vencimento') ?? '').toString().trim()
   if (vazio(dataPrimeiroVenc))
     add(scope, 'data_primeiro_vencimento_cp', 'Data do primeiro vencimento [CP]', 'Campo obrigatório.', 'Formato DD/MM/AAAA.', dataPrimeiroVenc)
   else if (!dataDDMMAAAAValida(dataPrimeiroVenc))
     add(scope, 'data_primeiro_vencimento_cp', 'Data do primeiro vencimento [CP]', 'Data inválida.', 'Formato DD/MM/AAAA. Ex.: 15/07/2025', dataPrimeiroVenc)
 
-  // Informações adicionais [CP] – pode ser N/A
-  const infoAdic = (get('informacoes_adicionais_cp') ?? '').toString().trim()
+  // Informações adicionais [CP] – pode ser N/A (coluna pode ser informacoes_adicionais_cp ou informacoes_adicionais → chave informacoes_adicionais_cp)
+  const infoAdic = (get('informacoes_adicionais_cp') ?? get('informacoes_adicionais') ?? '').toString().trim()
   if (vazio(infoAdic))
     add(scope, 'informacoes_adicionais_cp', 'Informações adicionais [CP]', 'Campo obrigatório.', 'Informe detalhes ou "N/A" se não houver.', infoAdic)
 
-  // Demais Razões Sociais [CP] – pode ser N/A se só uma razão
-  const demaisRazoes = (get('demais_razoes_sociais_cp') ?? '').toString().trim()
+  // Demais Razões Sociais [CP] – pode ser N/A se só uma razão (coluna pode ser demais_razoes_sociais_cp ou demais_razoes_sociais → chave demais_razoes_sociais_cp)
+  const demaisRazoes = (get('demais_razoes_sociais_cp') ?? get('demais_razoes_sociais') ?? '').toString().trim()
   if (vazio(demaisRazoes))
     add(scope, 'demais_razoes_sociais_cp', 'Demais Razões Sociais [CP]', 'Campo obrigatório.', 'Liste as demais razões com ; ou "N/A" se houver apenas uma.', demaisRazoes)
 
@@ -791,18 +791,18 @@ function validarConfecaoProposta(data, config) {
 }
 
 // Confecção de contrato [CC]: tipo pagamento, objeto, valores, rateio %, prazo, link
+// Opções válidas conforme manual: Mensal, Spot à vista, Spot parcelado, Escalonado, Variável, Alternativo, Só êxito
 const TIPO_PAGAMENTO_OPCOES = [
-  'mensal - fixo',
-  'mensal - preço fechado parcelado',
-  'mensal - escalonado',
-  'mensal - variável',
-  'mensal - condicionado',
-  'spot - à vista',
-  'spot - parcelado',
-  'spot com manutenção',
-  'spot - parcelado com manutenção',
-  'spot - condicionado',
-  'êxito',
+  'mensal',
+  'spot à vista',
+  'spot a vista',
+  'spot parcelado',
+  'escalonado',
+  'variável',
+  'variavel',
+  'alternativo',
+  'só êxito',
+  'so exito',
   'exito',
 ]
 const REGEX_DATA_DDMMAAAA = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
@@ -881,18 +881,21 @@ function validarConfecaoContrato(data, config) {
   const add = (scopeKey, fieldKey, label, msg, corrigir, val) =>
     addErrorIfEnabled(errors, config, scopeKey, fieldKey, label, msg, corrigir, val)
 
-  const tipoPag = (get('tipo_pagamento_cc') ?? '').toString().trim()
+  const tipoPag = (get('tipo_pagamento_cc') ?? get('tipo_de_pagamento_cc') ?? '').toString().trim()
   if (vazio(tipoPag)) {
-    add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Campo obrigatório.', 'Mensal (Fixo, Preço Fechado Parcelado, Escalonado, Variável, Condicionado), SPOT (À vista, Parcelado, com Manutenção, Condicionado), Êxito', tipoPag)
+    add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Campo obrigatório.', 'Mensal, Spot à vista, Spot parcelado, Escalonado, Variável, Alternativo, Só êxito', tipoPag)
   } else {
-    const norm = tipoPag.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    const ok = TIPO_PAGAMENTO_OPCOES.some((o) => norm.includes(o.replace(/\s+/g, ' ')))
+    const norm = tipoPag.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, ' ').trim()
+    const ok = TIPO_PAGAMENTO_OPCOES.some((o) => {
+      const normOpt = o.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/\s+/g, ' ').trim()
+      return normOpt && (norm.includes(normOpt) || normOpt.includes(norm))
+    })
     if (!ok) {
-      add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Opção inválida.', 'Selecione: Mensal - Fixo, Mensal - Preço Fechado Parcelado, Mensal - Escalonado, Mensal - Variável, Mensal - Condicionado, SPOT - À vista, SPOT - Parcelado, SPOT com Manutenção, SPOT - Condicionado, Êxito', tipoPag)
+      add(scope, 'tipo_pagamento_cc', 'Tipo de pagamento [CC]', 'Opção inválida.', 'Selecione: Mensal, Spot à vista, Spot parcelado, Escalonado, Variável, Alternativo, Só êxito', tipoPag)
     }
   }
 
-  const objeto = (get('objeto_contrato_cc') ?? '').toString().trim()
+  const objeto = (get('objeto_contrato_cc') ?? get('objeto_do_contrato_cc') ?? get('escopo_contratual_cadastro') ?? '').toString().trim()
   if (vazio(objeto)) {
     add(scope, 'objeto_contrato_cc', 'Objeto do Contrato [CC]', 'Campo obrigatório.', 'Descrever de forma clara e completa o objeto do contrato (serviços, escopo, detalhes).', objeto)
   }
@@ -913,19 +916,14 @@ function validarConfecaoContrato(data, config) {
     }
   }
 
-  const prazo = (get('prazo_contrato_cc') ?? '').toString().trim()
+  const prazo = (get('prazo_contrato_cc') ?? get('prazo_confecao_contrato_cc') ?? get('prazo_entrega_contrato') ?? '').toString().trim()
   if (vazio(prazo)) {
     add(scope, 'prazo_contrato_cc', 'Prazo para Confecção do Contrato [CC]', 'Campo obrigatório.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
   } else if (!dataDDMMAAAAValida(prazo)) {
     add(scope, 'prazo_contrato_cc', 'Prazo para Confecção do Contrato [CC]', 'Data inválida.', 'Formato DD/MM/AAAA. Ex.: 25/07/2025', prazo)
   }
 
-  const linkContrato = (get('link_do_contrato') ?? '').toString().trim()
-  if (vazio(linkContrato)) {
-    add(scope, 'link_do_contrato', 'Link do Contrato', 'Campo obrigatório.', 'Link para pasta compartilhada (SharePoint, VIOS). Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
-  } else if (!linkPropostaOuContratoValido(linkContrato)) {
-    add(scope, 'link_do_contrato', 'Link do Contrato', 'Link deve ser diretório oficial (SharePoint, VIOS).', 'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
-  }
+  // Link do Contrato: obrigatório apenas a partir da etapa "Contrato Elaborado" (validado em validarLinkContratoQuandoElaborado)
 
   return { valid: errors.length === 0, errors }
 }
@@ -938,13 +936,31 @@ function validarPropostaEnviada(data, config) {
   const add = (scopeKey, fieldKey, label, msg, corrigir, val) =>
     addErrorIfEnabled(errors, config, scopeKey, fieldKey, label, msg, corrigir, val)
 
-  const linkProposta = (get('link_da_proposta') ?? '').toString().trim()
+  const linkProposta = (get('link_da_proposta') ?? get('link_proposta') ?? '').toString().trim()
+  const linkPropostaEhNaPropostaSimples = /^N\/A\s*[-–—]?\s*Proposta simples por (telefone|whatsapp)/i.test(linkProposta)
   if (vazio(linkProposta)) {
     add(scope, 'link_da_proposta', 'Link da Proposta', 'Campo obrigatório na etapa Proposta enviada.', 'Link ou caminho para a pasta compartilhada (SharePoint, VIOS, etc.). Ex.: https://bpplaw2.sharepoint.com/...', linkProposta)
-  } else if (!linkPropostaOuContratoValido(linkProposta)) {
+  } else if (!linkPropostaEhNaPropostaSimples && !linkPropostaOuContratoValido(linkProposta)) {
     add(scope, 'link_da_proposta', 'Link da Proposta', 'Link deve ser diretório oficial (SharePoint, VIOS).', 'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...', linkProposta)
   }
 
+  return { valid: errors.length === 0, errors }
+}
+
+// Link do Contrato: obrigatório apenas a partir da etapa "Contrato Elaborado" (e nas seguintes, ex.: Contrato Assinado)
+function validarLinkContratoQuandoElaborado(data, config) {
+  const errors = []
+  const get = (key) => data[key]
+  const scope = 'confecao_contrato'
+  const add = (scopeKey, fieldKey, label, msg, corrigir, val) =>
+    addErrorIfEnabled(errors, config, scopeKey, fieldKey, label, msg, corrigir, val)
+
+  const linkContrato = (get('link_do_contrato') ?? get('link_contrato') ?? '').toString().trim()
+  if (vazio(linkContrato)) {
+    add(scope, 'link_do_contrato', 'Link do Contrato', 'Campo obrigatório a partir da etapa Contrato Elaborado.', 'Link para pasta compartilhada (SharePoint, VIOS). Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
+  } else if (!linkPropostaOuContratoValido(linkContrato)) {
+    add(scope, 'link_do_contrato', 'Link do Contrato', 'Link deve ser diretório oficial (SharePoint, VIOS).', 'Use link que comece com https:// e contenha sharepoint ou vios. Ex.: https://bpplaw2.sharepoint.com/...', linkContrato)
+  }
   return { valid: errors.length === 0, errors }
 }
 
@@ -975,6 +991,8 @@ function validarPorStageName(stageName, funil, data, config) {
   const isConfecaoProposta = sn.includes('confec') && sn.includes('proposta')
   const isConfecaoContrato = sn.includes('confec') && sn.includes('contrato')
   const isPropostaEnviada = sn.includes('proposta') && sn.includes('enviada') && !isConfecaoProposta
+  // Link do Contrato: cobrado apenas a partir de "Contrato Elaborado" ou "Contrato Assinado" (e etapas posteriores)
+  const isContratoElaboradoOuPosterior = sn.includes('contrato') && (sn.includes('elaborado') || sn.includes('assinado'))
 
   if (isConfecaoProposta) {
     const extra = validarConfecaoProposta(data, mergedConfig)
@@ -990,6 +1008,12 @@ function validarPorStageName(stageName, funil, data, config) {
 
   if (isConfecaoContrato) {
     const extra = validarConfecaoContrato(data, mergedConfig)
+    result.errors = result.errors.concat(extra.errors)
+    result.valid = result.errors.length === 0
+  }
+
+  if (isContratoElaboradoOuPosterior) {
+    const extra = validarLinkContratoQuandoElaborado(data, mergedConfig)
     result.errors = result.errors.concat(extra.errors)
     result.valid = result.errors.length === 0
   }

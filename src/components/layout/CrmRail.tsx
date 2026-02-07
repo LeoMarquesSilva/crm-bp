@@ -15,8 +15,7 @@ import { cn } from '@/lib/utils'
 const CRM_PATHS = [
   { path: '/validacao', label: 'Validação', icon: FileCheck },
   { path: '/sla', label: 'SLA', icon: Clock },
-  { path: '/dashboard-bi', label: 'Dashboard', icon: BarChart3 },
-  { path: '/analise-planilha', label: 'Análise', icon: PieChart },
+  { path: '/analise-planilha', label: 'Dashboard', icon: BarChart3 },
 ] as const
 
 export function CrmRail() {

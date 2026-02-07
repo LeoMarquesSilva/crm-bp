@@ -4,8 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 const PAGE_TITLES: Record<string, string> = {
   '/validacao': 'Validação de planilha',
   '/sla': 'Leads fora do SLA',
-  '/dashboard-bi': 'Dashboard BI',
-  '/analise-planilha': 'Análise da planilha',
+  '/analise-planilha': 'Dashboard',
 }
 
 export function CrmPageTitle() {
