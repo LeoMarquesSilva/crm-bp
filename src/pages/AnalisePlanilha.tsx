@@ -595,8 +595,6 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
 
   const login = useGoogleLogin({
     flow: 'auth-code',
-    access_type: 'offline',
-    prompt: 'consent',
     onSuccess: async (codeResponse: { code?: string }) => {
       const code = codeResponse?.code
       if (!code) {
@@ -673,8 +671,9 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   // Restaura token compartilhado do Supabase quando localStorage está vazio; se expirado, tenta refresh
   useEffect(() => {
     if (accessToken || !supabase) return
+    const db = supabase
     const run = async () => {
-      const { data: row, error } = await supabase
+      const { data: row, error } = await db
         .from('sessoes_google')
         .select('access_token, expires_at')
         .eq('session_id', 'shared')
@@ -1794,7 +1793,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
           }}
           className={cn(
             'rounded-2xl border p-5 shadow-md text-left transition-all hover:shadow-lg',
-            activeTab === 'leads' && !selectedSolicitanteKey && resumo.won > 0
+            (activeTab as DashboardTabId) === 'leads' && !selectedSolicitanteKey && resumo.won > 0
               ? 'border-emerald-300 bg-emerald-50/80 ring-2 ring-emerald-200'
               : 'border-emerald-200/80 bg-white hover:bg-emerald-50/30'
           )}

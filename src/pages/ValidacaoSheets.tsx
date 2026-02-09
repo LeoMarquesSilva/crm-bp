@@ -509,8 +509,6 @@ export function ValidacaoSheets() {
 
   const login = useGoogleLogin({
     flow: 'auth-code',
-    access_type: 'offline',
-    prompt: 'consent',
     onSuccess: async (codeResponse: { code?: string }) => {
       const code = codeResponse?.code
       if (!code) {
@@ -553,8 +551,9 @@ export function ValidacaoSheets() {
       if (!accessToken) setSessionRestoreAttempted(true)
       return
     }
+    const db = supabase
     const tryRestore = async (sid: string): Promise<boolean> => {
-      const { data: row, error } = await supabase
+      const { data: row, error } = await db
         .from('sessoes_google')
         .select('access_token, expires_at')
         .eq('session_id', sid)

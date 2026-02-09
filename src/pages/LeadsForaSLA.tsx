@@ -363,8 +363,9 @@ export function LeadsForaSLA() {
       if (!accessToken) setSessionRestoreAttempted(true)
       return
     }
+    const db = supabase
     const tryRestore = async (sessionId: string): Promise<boolean> => {
-      const { data: row, error } = await supabase
+      const { data: row, error } = await db
         .from('sessoes_google')
         .select('access_token, expires_at')
         .eq('session_id', sessionId)
@@ -388,9 +389,6 @@ export function LeadsForaSLA() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
   const login = useGoogleLogin({
     flow: 'auth-code',
-    // access_type=offline + prompt=consent garantem o refresh_token para renovação automática
-    access_type: 'offline',
-    prompt: 'consent',
     onSuccess: async (codeResponse: { code?: string }) => {
       const code = codeResponse?.code
       if (!code) {
@@ -1173,10 +1171,10 @@ export function LeadsForaSLA() {
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-gray-900 truncate" title={member?.name ?? (r.planilha as Record<string, unknown>)?.solicitante ?? email}>
-                                {member?.name ?? ((r.planilha as Record<string, unknown>)?.solicitante as string)?.trim() ?? (email || '—')}
+                              <p className="text-sm font-semibold text-gray-900 truncate" title={String((member?.name ?? (r.planilha as Record<string, unknown>)?.solicitante) ?? email ?? '')}>
+                                {String(member?.name ?? (r.planilha as Record<string, unknown>)?.solicitante ?? '').trim() || (email || '—')}
                               </p>
-                              {(areaVal || (r.planilha as Record<string, unknown>)?.areas_analise) && (
+                              {Boolean(areaVal || (r.planilha as Record<string, unknown>)?.areas_analise) && (
                                 <p className="flex items-center gap-1 text-[10px] text-gray-500 truncate mt-0.5" title={String((areaVal ?? (r.planilha as Record<string, unknown>)?.areas_analise) ?? '')}>
                                   {AreaIco && <AreaIco className="h-3 w-3 flex-shrink-0 text-gray-400" />}
                                   <span className="truncate">{(areaVal ?? String((r.planilha as Record<string, unknown>)?.areas_analise ?? '').trim()) || '—'}</span>
