@@ -11,11 +11,18 @@ create table if not exists public.sessoes_google (
   session_id text primary key,
   access_token text not null,
   expires_at timestamptz not null,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  refresh_token text
 );
 
 comment on table public.sessoes_google is
-  'Backup/restore da sessão Google OAuth (Validação Sheets). Chave session_id é um uuid por navegador.';
+  'Backup/restore da sessão Google OAuth. Com refresh_token, a autenticação é renovada automaticamente sem reconectar.';
+```
+
+Se a tabela já existir sem `refresh_token`, adicione a coluna:
+
+```sql
+alter table public.sessoes_google add column if not exists refresh_token text;
 ```
 
 ## 2. Políticas RLS
@@ -42,10 +49,15 @@ O app só lê e escreve a linha do próprio `session_id` (gerado e guardado no l
 
 ## 3. Comportamento no app
 
-- **Ao conectar com o Google:** o token é salvo no localStorage e em `sessoes_google` (upsert por `session_id`).
-- **Ao carregar a página:** se não houver token no localStorage, o app busca em `sessoes_google` pelo `session_id`; se encontrar token ainda válido, restaura no localStorage e segue conectado.
-- **Ao desconectar:** o token é apagado do localStorage e a linha correspondente é removida do Supabase.
+- **Ao conectar com o Google:** o app usa o fluxo **authorization code** e troca o código por tokens no backend (`/api/google-oauth`). O access_token e refresh_token são salvos no Supabase (`session_id = 'shared'`).
+- **Ao carregar a página:** se não houver token no localStorage, o app busca em `sessoes_google` por `session_id = 'shared'`. Se o token estiver expirado, chama `/api/google-oauth-refresh` para renovar usando o refresh_token — a autenticação continua indefinidamente sem reconectar.
+- **Ao desconectar:** o token é apagado apenas do localStorage (o token compartilhado no Supabase permanece).
 
-O `session_id` é um uuid gerado na primeira visita e guardado no localStorage em `crm-bp-google-session-id`. Ele é reaproveitado entre abas do mesmo navegador.
+Para funcionar, uma pessoa com acesso ao Google da organização precisa conectar ao menos uma vez. Depois, todos os usuários entram já conectados e o token é renovado automaticamente quando expira.
 
-Variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` precisam estar em `.env.local` (veja [INTEGRACAO-SUPABASE.md](./INTEGRACAO-SUPABASE.md)).
+### Variáveis de ambiente
+
+- **Frontend:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_GOOGLE_CLIENT_ID` (veja [INTEGRACAO-SUPABASE.md](./INTEGRACAO-SUPABASE.md)).
+- **Backend (API):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SUPABASE_URL` (ou `VITE_SUPABASE_URL`), `SUPABASE_ANON_KEY` (ou `VITE_SUPABASE_ANON_KEY`).
+
+O **Client Secret** do Google deve ficar apenas no backend (`.env` ou variáveis do Vercel) e **nunca** com prefixo `VITE_`.

@@ -2,7 +2,7 @@
  * Página de análise e gráficos a partir dos dados da planilha (Google Sheets).
  * Filtro por ano/mês, motivos de perda em lista, solicitantes com foto, cards clicáveis com detalhe do lead.
  */
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGoogleLogin } from '@react-oauth/google'
 import {
   FileSpreadsheet,
@@ -71,6 +71,7 @@ import {
   Cell,
 } from 'recharts'
 import { getTeamMember, getSolicitanteKey, getAreaByEmail } from '@/data/teamAvatars'
+import { supabase } from '@/lib/supabase'
 import { useCountUp } from '@/hooks/useCountUp'
 
 /** Detalhe de lead sem área: nome do solicitante e nome do lead (para exibir no relatório). */
@@ -78,6 +79,7 @@ type SemAreaDetalhe = { solicitanteNome: string; leadNome: string }
 import { cn } from '@/lib/utils'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
+const API = (path: string) => `${API_BASE}/api${path}`
 const STORAGE_KEY = 'crm-bp-google-oauth'
 const PLANILHA_ID = import.meta.env.VITE_PLANILHA_ID || '14tr0jLk8JztNxPOWv6Pr-9bdoCPBJCF5A_QP_bR1agI'
 const PLANILHA_ABA = import.meta.env.VITE_PLANILHA_ABA || ''
@@ -313,6 +315,19 @@ function filterByFunil(rows: PlanilhaRow[], funil: string): PlanilhaRow[] {
   return rows.filter((r) => (r.funil ?? '').trim() === funil)
 }
 
+/** Dias desde a data de atualização (ou criação) do lead — usado para "tempo na etapa" em leads em andamento. */
+function diasNaEtapa(lead: PlanilhaRow): number | null {
+  const raw = lead.updated_at_iso || lead.created_at_iso || ''
+  if (!raw) return null
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return null
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  date.setHours(0, 0, 0, 0)
+  const diffMs = hoje.getTime() - date.getTime()
+  return Math.floor(diffMs / (24 * 60 * 60 * 1000))
+}
+
 function filterBySolicitante(rows: PlanilhaRow[], emailKey: string, getKey: (email: string) => string): PlanilhaRow[] {
   if (!emailKey) return rows
   return rows.filter((r) => {
@@ -379,7 +394,7 @@ const INDICACAO_ICONS: Record<string, JSX.Element> = {
   'Outros parceiros': <MoreHorizontal className="h-4 w-4" />,
 }
 
-/** Recap: Dashboard em seções (DashboardSection). Ordem: Filtros | Pipeline & Métricas (KPIs) | [Motivos de perda | Resumo por status + Relatórios] (2 cols) | Ranking performance | Etapas funil | Lista de leads | Leads perdidas por solicitante | Leads vendidas (condicional) | Modal detalhe. Ícones: Filter, LayoutDashboard, AlertCircle, BarChart2, Send, Award, Table2, Activity, Users. */
+/** Recap: Dashboard em seções (DashboardSection). Ordem: Filtros | Pipeline & Métricas (KPIs) | [Motivos de perda | Resumo por status + Relatórios] (2 cols) | Ranking performance | Lista de leads | Leads perdidas por solicitante | Leads vendidas (condicional) | Modal detalhe. Ícones: Filter, LayoutDashboard, AlertCircle, BarChart2, Send, Award, Table2, Activity, Users. */
 const MESES_LABEL: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
   7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro',
@@ -546,10 +561,17 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const [filterArea, setFilterArea] = useState<string>('')
   /** Etapas a considerar: vazio = todas; senão só estas. */
   const [selectedEtapas, setSelectedEtapas] = useState<string[]>([])
-  const [showWonLeadsPanel, setShowWonLeadsPanel] = useState(false)
   const [selectedSolicitanteKey, setSelectedSolicitanteKey] = useState<string | null>(null)
+  /** Vendedor selecionado na aba Perdas — exibe seção "Leads perdidas de [nome]" com scroll. */
+  const [selectedPerdasSolicitanteKey, setSelectedPerdasSolicitanteKey] = useState<string | null>(null)
+  /** Ref da seção "Leads perdidas de [vendedor]" na aba Perdas (para scroll ao clicar). */
+  const perdasLeadsSectionRef = useRef<HTMLDivElement>(null)
+  /** Na aba Perdas: expandir lista de leads perdidas do vendedor selecionado. */
+  const [expandPerdasLeads, setExpandPerdasLeads] = useState(false)
   /** Filtro do painel de leads ao clicar em um vendedor: vendidas, perdidas ou em andamento */
   const [filterLeadsPanelStatus, setFilterLeadsPanelStatus] = useState<'win' | 'lost' | 'ongoing' | 'all'>('all')
+  /** Filtro por etapa na seção "Leads do vendedor" (Performance). */
+  const [filterPerformanceEtapa, setFilterPerformanceEtapa] = useState<string>('')
   const [selectedLead, setSelectedLead] = useState<PlanilhaRow | null>(null)
   const [internalTab, setInternalTab] = useState<DashboardTabId>('visao-geral')
   const activeTab = activeTabProp ?? internalTab
@@ -557,12 +579,48 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
+  const tryRefreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(API('/google-oauth-refresh'), { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || !json.access_token) return false
+      const sec = typeof json.expires_in === 'number' && json.expires_in > 0 ? json.expires_in : 3600
+      setAccessToken(json.access_token)
+      saveToken(json.access_token, sec)
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      const sec = typeof tokenResponse.expires_in === 'number' && tokenResponse.expires_in > 0 ? tokenResponse.expires_in : 3600
-      setAccessToken(tokenResponse.access_token)
-      saveToken(tokenResponse.access_token, sec)
-      setError(null)
+    flow: 'auth-code',
+    access_type: 'offline',
+    prompt: 'consent',
+    onSuccess: async (codeResponse: { code?: string }) => {
+      const code = codeResponse?.code
+      if (!code) {
+        setError('Resposta inválida do Google.')
+        return
+      }
+      try {
+        const res = await fetch(API('/google-oauth'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, redirect_uri: window.location.origin }),
+        })
+        const json = await res.json()
+        if (!res.ok || !json.access_token) {
+          setError(json.error || 'Não foi possível conectar com o Google.')
+          return
+        }
+        const sec = typeof json.expires_in === 'number' && json.expires_in > 0 ? json.expires_in : 3600
+        setAccessToken(json.access_token)
+        saveToken(json.access_token, sec)
+        setError(null)
+      } catch {
+        setError('Não foi possível conectar com o Google. Tente novamente.')
+      }
     },
     onError: () => setError('Não foi possível conectar com o Google. Tente novamente.'),
     scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
@@ -599,7 +657,6 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       setSelectedEtapas([])
       setFilterAno('')
       setFilterMes('')
-      setShowWonLeadsPanel(false)
       setSelectedSolicitanteKey(null)
       setSelectedLead(null)
     } catch (e) {
@@ -612,6 +669,46 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   useEffect(() => {
     if (accessToken && PLANILHA_ID.trim()) loadPlanilha()
   }, [accessToken, loadPlanilha])
+
+  // Restaura token compartilhado do Supabase quando localStorage está vazio; se expirado, tenta refresh
+  useEffect(() => {
+    if (accessToken || !supabase) return
+    const run = async () => {
+      const { data: row, error } = await supabase
+        .from('sessoes_google')
+        .select('access_token, expires_at')
+        .eq('session_id', 'shared')
+        .maybeSingle()
+      if (error || !row?.access_token) return
+      const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : 0
+      if (expiresAt > Date.now() - 60000) {
+        saveToken(row.access_token, Math.max(0, Math.round((expiresAt - Date.now()) / 1000)))
+        setAccessToken(row.access_token)
+        return
+      }
+      await tryRefreshToken()
+    }
+    run()
+  }, [accessToken, supabase, tryRefreshToken])
+
+  /** Na aba Performance: ao selecionar um vendedor, rolar até a seção "Leads do vendedor". */
+  useEffect(() => {
+    if (activeTab === 'performance' && selectedSolicitanteKey && performanceLeadsSectionRef.current) {
+      performanceLeadsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab, selectedSolicitanteKey])
+
+  /** Ao trocar de vendedor na Performance, limpar filtro de etapa (pode não existir no novo vendedor). */
+  useEffect(() => {
+    if (selectedSolicitanteKey) setFilterPerformanceEtapa('')
+  }, [selectedSolicitanteKey])
+
+  /** Na aba Perdas: ao selecionar um vendedor, rolar até a seção "Leads perdidas de [nome]". */
+  useEffect(() => {
+    if (activeTab === 'perdas' && selectedPerdasSolicitanteKey && perdasLeadsSectionRef.current) {
+      perdasLeadsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab, selectedPerdasSolicitanteKey])
 
   const rawResults = data?.results ?? []
   const getSolicitanteLabel = useCallback((email: string) => {
@@ -838,6 +935,17 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       .sort((a, b) => b.total - a.total) as SolicitanteItem[]
   }, [results])
 
+  /** Leads perdidas do vendedor selecionado na aba Perdas (para a seção "Leads perdidas de [nome]"). */
+  const perdidasLeadsList = useMemo(() => {
+    if (!selectedPerdasSolicitanteKey) return []
+    return results.filter((r) => {
+      if (r.status !== 'lost') return false
+      const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const key = e ? getSolicitanteKey(e) : '(sem e-mail)'
+      return key === selectedPerdasSolicitanteKey
+    })
+  }, [results, selectedPerdasSolicitanteKey])
+
   /** Lê campo da linha (top-level ou planilha bruta) para tipo_lead, nome_indicacao, indicacao. Suporta colunas alternativas (ex.: tipo_de_lead). */
   const getLeadField = useCallback((r: PlanilhaRow, key: 'tipo_lead' | 'nome_indicacao' | 'indicacao') => {
     const planilha = r.planilha as Record<string, string | null | undefined> | undefined
@@ -1029,6 +1137,20 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     if (filterLeadsPanelStatus === 'all') return leadsDoSolicitanteSelecionado
     return leadsDoSolicitanteSelecionado.filter((r) => r.status === filterLeadsPanelStatus)
   }, [leadsDoSolicitanteSelecionado, filterLeadsPanelStatus])
+  /** Na seção Performance: lista após filtro de status + etapa (só do vendedor selecionado). */
+  const performanceLeadsList = useMemo(() => {
+    if (!filterPerformanceEtapa) return leadsPainelFiltradasPorStatus
+    return leadsPainelFiltradasPorStatus.filter((r) => (r.stage_name ?? '').trim() === filterPerformanceEtapa)
+  }, [leadsPainelFiltradasPorStatus, filterPerformanceEtapa])
+  /** Etapas presentes nos leads do vendedor selecionado (para dropdown na seção Performance). */
+  const performanceEtapasDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    leadsDoSolicitanteSelecionado.forEach((r) => {
+      const s = (r.stage_name ?? '').trim()
+      if (s) set.add(s)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [leadsDoSolicitanteSelecionado])
   const wonLeadsFiltradasPorSolicitante = useMemo(() => {
     if (!selectedSolicitanteKey) return wonLeads
     return wonLeads.filter((r) => {
@@ -1037,18 +1159,6 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       return key === selectedSolicitanteKey
     })
   }, [wonLeads, selectedSolicitanteKey])
-
-  /** Etapas (stage_name) que aparecem nos dados atuais (após filtros). Ordem: funil oficial, depois demais. */
-  const etapasConsideradasNosDados = useMemo(() => {
-    const set = new Set<string>()
-    results.forEach((r) => {
-      const s = (r.stage_name ?? '').trim()
-      if (s) set.add(s)
-    })
-    const naOrdem = ETAPAS_FUNIL_VENDAS.filter((e) => set.has(e))
-    const outras = Array.from(set).filter((e) => !ETAPAS_FUNIL_VENDAS.includes(e)).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return [...naOrdem, ...outras]
-  }, [results])
 
   type ReportTypeOption = 'resumo' | 'area' | 'solicitante' | 'motivos' | 'motivos-area' | 'tipo-lead' | 'indicacao' | 'nome-indicacao' | 'perdidas-anotacao'
   const [reportType, setReportType] = useState<ReportTypeOption>('resumo')
@@ -1063,6 +1173,10 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const [expandRankingSolicitantes, setExpandRankingSolicitantes] = useState(false)
   const [expandPerdidasSolicitante, setExpandPerdidasSolicitante] = useState(false)
   const [expandListaLeads, setExpandListaLeads] = useState(false)
+  /** Na aba Performance: expandir lista de leads do vendedor selecionado. */
+  const [expandPerformanceLeads, setExpandPerformanceLeads] = useState(false)
+  /** Ref da seção "Leads do vendedor" na aba Performance (para scroll ao clicar). */
+  const performanceLeadsSectionRef = useRef<HTMLDivElement>(null)
   /** Filtro da lista de leads por motivo de perda (clique em um motivo). */
   const [filterListaPorMotivo, setFilterListaPorMotivo] = useState<string | null>(null)
   /** Filtros da aba Leads (além dos filtros globais). */
@@ -1083,16 +1197,9 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     setFilterArea('')
   }, [])
 
-  /** Lista de leads para exibir na tabela: filtrada por solicitante (se clicou no ranking) e/or motivo de perda (se clicou em um motivo) e filtros da aba Leads. */
+  /** Lista de leads para exibir na aba Leads: filtrada apenas pelos filtros da própria aba (não usa selectedSolicitanteKey da Performance). */
   const listaLeadsFiltrada = useMemo(() => {
     let list = results
-    if (selectedSolicitanteKey) {
-      list = list.filter((r) => {
-        const e = (r.email_solicitante ?? r.email_notificar ?? '').trim()
-        const key = e ? getSolicitanteKey(e) : '(sem e-mail)'
-        return key === selectedSolicitanteKey
-      })
-    }
     if (filterListaPorMotivo) {
       list = list.filter((r) => ((r.motivo_perda ?? '').trim() || 'Não informado') === filterListaPorMotivo)
     }
@@ -1127,7 +1234,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       })
     }
     return list
-  }, [results, selectedSolicitanteKey, filterListaPorMotivo, filterLeadsEtapa, filterLeadsNome, filterLeadsFunil, filterLeadsStatus, filterLeadsSolicitante, filterLeadsArea])
+  }, [results, filterListaPorMotivo, filterLeadsEtapa, filterLeadsNome, filterLeadsFunil, filterLeadsStatus, filterLeadsSolicitante, filterLeadsArea])
 
   /** Leads por área (tag do solicitante) para relatório. Para "(sem área)" inclui detalhes: solicitante + nome do lead. */
   const leadsPorAreaParaRelatorio = useMemo(() => {
@@ -1682,13 +1789,12 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         <button
           type="button"
           onClick={() => {
-            setShowWonLeadsPanel(true)
             setSelectedSolicitanteKey(null)
             setActiveTab('leads')
           }}
           className={cn(
             'rounded-2xl border p-5 shadow-md text-left transition-all hover:shadow-lg',
-            showWonLeadsPanel && selectedSolicitanteKey === null && resumo.won > 0
+            activeTab === 'leads' && !selectedSolicitanteKey && resumo.won > 0
               ? 'border-emerald-300 bg-emerald-50/80 ring-2 ring-emerald-200'
               : 'border-emerald-200/80 bg-white hover:bg-emerald-50/30'
           )}
@@ -2413,7 +2519,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       <DashboardSection
         icon={<Award className="h-5 w-5" />}
         title="Ranking de performance"
-        description="Conversão e win rate por solicitante. Clique em um nome para filtrar a lista de leads abaixo e ver leads vendidas."
+        description="Conversão e win rate por solicitante. Clique em um vendedor para ver a lista de leads dele na mesma página."
         fullWidth
       >
       {performancePorSolicitante.length === 0 ? (
@@ -2432,9 +2538,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                     height="min-h-[12rem]"
                     medalClass="bg-gray-400 text-white"
                     onClick={() => {
-                      setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[1].emailKey ? null : performancePorSolicitante[1].emailKey)
-                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[1].emailKey}
                   />
@@ -2450,9 +2554,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                     height="min-h-[15rem]"
                     medalClass="bg-amber-400 text-amber-900"
                     onClick={() => {
-                      setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[0].emailKey ? null : performancePorSolicitante[0].emailKey)
-                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[0].emailKey}
                   />
@@ -2468,9 +2570,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                     height="min-h-[10rem]"
                     medalClass="bg-amber-700 text-amber-100"
                     onClick={() => {
-                      setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === performancePorSolicitante[2].emailKey ? null : performancePorSolicitante[2].emailKey)
-                      setActiveTab('leads')
                     }}
                     isSelected={selectedSolicitanteKey === performancePorSolicitante[2].emailKey}
                   />
@@ -2497,9 +2597,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                     key={p.emailKey}
                     type="button"
                     onClick={() => {
-                      setShowWonLeadsPanel(true)
                       setSelectedSolicitanteKey(selectedSolicitanteKey === p.emailKey ? null : p.emailKey)
-                      setActiveTab('leads')
                     }}
                     className={cn(
                       'group flex flex-col items-center rounded-2xl border-2 px-4 py-4 text-center transition-all duration-300 hover:scale-[1.02] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary/50',
@@ -2570,6 +2668,220 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         </>
       )}
       </DashboardSection>
+
+      {/* Seção: Leads do vendedor (mesma página, com scroll suave ao clicar) */}
+      {selectedSolicitanteKey && (
+        <div ref={performanceLeadsSectionRef} className="scroll-mt-6">
+          <DashboardSection
+            icon={<Table2 className="h-5 w-5" />}
+            title={`Leads de ${getSolicitanteLabel(selectedSolicitanteKey === '(sem e-mail)' ? '' : selectedSolicitanteKey)}`}
+            description={leadsDoSolicitanteSelecionado.length === 0 ? 'Nenhum lead no período.' : `${performanceLeadsList.length} de ${leadsDoSolicitanteSelecionado.length} lead(s) — filtros abaixo. Clique em "Ver detalhes" ou use "Ir para aba Leads" para mais opções.`}
+            fullWidth
+          >
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => { setSelectedSolicitanteKey(null); setExpandPerformanceLeads(false); setFilterLeadsPanelStatus('all'); setFilterPerformanceEtapa('') }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Eraser className="h-4 w-4" />
+                Limpar seleção
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('leads')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary text-white px-3 py-1.5 text-sm font-medium hover:bg-primary/90"
+              >
+                Ir para aba Leads
+              </button>
+            </div>
+
+            {/* Filtros rápidos: status + etapa */}
+            <div className="flex flex-wrap items-center gap-3 mb-4 p-3 rounded-lg border border-gray-200 bg-gray-50/80">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Status:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: 'all' as const, label: 'Todos' },
+                  { value: 'win' as const, label: 'Vendidas' },
+                  { value: 'lost' as const, label: 'Perdidas' },
+                  { value: 'ongoing' as const, label: 'Em andamento' },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFilterLeadsPanelStatus(value)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border',
+                      filterLeadsPanelStatus === value
+                        ? 'bg-primary text-white border-primary shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {performanceEtapasDisponiveis.length > 0 && (
+                <>
+                  <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide ml-1">Etapa:</span>
+                  <select
+                    value={filterPerformanceEtapa}
+                    onChange={(e) => setFilterPerformanceEtapa(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800"
+                  >
+                    <option value="">Todas</option>
+                    {performanceEtapasDisponiveis.map((e) => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
+
+            {performanceLeadsList.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">
+                {leadsDoSolicitanteSelecionado.length === 0 ? 'Nenhum lead para este solicitante no período.' : 'Nenhum lead corresponde aos filtros. Altere status ou etapa acima.'}
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[...performanceLeadsList]
+                    .sort((a, b) => {
+                      const da = a.created_at_iso || ''
+                      const db = b.created_at_iso || ''
+                      return db.localeCompare(da)
+                    })
+                    .slice(0, expandPerformanceLeads ? undefined : LISTA_LEADS_INICIAL)
+                    .map((lead) => {
+                      const nome = lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`
+                      const inicial = nome.charAt(0).toUpperCase()
+                      const leadEmail = (lead.email_solicitante ?? lead.email_notificar ?? '') || ''
+                      const solicitanteAvatar = getTeamMember(leadEmail)?.avatar ?? null
+                      const areaLabel = getAreaByEmail(leadEmail) ?? ''
+                      const AreaIconComp = areaLabel ? AREA_ICONS[areaLabel] : null
+                      return (
+                        <div
+                          key={lead.rowIndex}
+                          className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/30 hover:bg-gray-50/50"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-base ring-2 ring-primary/20">
+                              {inicial}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-gray-900 truncate" title={nome}>{nome}</p>
+                              <p className="text-sm text-gray-600 truncate mt-0.5" title={lead.razao_social || ''}>
+                                {lead.razao_social || '—'}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                                    lead.status === 'win' && 'bg-post/20 text-post',
+                                    lead.status === 'lost' && 'bg-red-100 text-red-700',
+                                    (lead.status === 'ongoing' || (!lead.status || (lead.status !== 'win' && lead.status !== 'lost'))) && 'bg-sky-100 text-sky-700'
+                                  )}
+                                >
+                                  {lead.status === 'win' ? 'Ganha' : lead.status === 'lost' ? 'Perdida' : 'Em andamento'}
+                                </span>
+                                {lead.stage_name && (
+                                  <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 truncate max-w-[120px]" title={lead.stage_name}>
+                                    {lead.stage_name}
+                                  </span>
+                                )}
+                                {lead.funil && (
+                                  <span className="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary truncate max-w-[100px]" title={lead.funil}>
+                                    {lead.funil}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2 flex items-center gap-2 min-w-0">
+                                {solicitanteAvatar ? (
+                                  <img src={solicitanteAvatar} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white shadow flex-shrink-0" />
+                                ) : (
+                                  <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
+                                    {(getSolicitanteLabel(leadEmail) || '?').charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-gray-800 truncate" title={getSolicitanteLabel(leadEmail)}>
+                                    {getSolicitanteLabel(leadEmail) || '—'}
+                                  </span>
+                                  {AreaIconComp && (
+                                    <span className="flex-shrink-0 text-primary" title={areaLabel}>
+                                      <AreaIconComp className="h-3.5 w-3.5" />
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                <span className="font-medium text-gray-600">Criado em:</span>{' '}
+                                {lead.created_at_iso
+                                  ? new Date(lead.created_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                  : '—'}
+                              </p>
+                              {lead.status === 'win' && (() => {
+                                const dataVenda = lead.updated_at_iso || lead.created_at_iso || ''
+                                return (
+                                  <p className="text-xs text-post font-medium mt-0.5">
+                                    <span className="text-gray-600">Vendida em:</span>{' '}
+                                    {dataVenda ? new Date(dataVenda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                                  </p>
+                                )
+                              })()}
+                              {lead.status === 'lost' && (() => {
+                                const dataPerda = lead.updated_at_iso || lead.created_at_iso || ''
+                                return (
+                                  <p className="text-xs text-red-600 font-medium mt-0.5">
+                                    <span className="text-gray-600">Perdida em:</span>{' '}
+                                    {dataPerda ? new Date(dataPerda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                                  </p>
+                                )
+                              })()}
+                              {(lead.status === 'ongoing' || (!lead.status || (lead.status !== 'win' && lead.status !== 'lost'))) && (() => {
+                                const dias = diasNaEtapa(lead)
+                                if (dias === null) return null
+                                return (
+                                  <p className="text-xs text-sky-600 mt-0.5 font-medium" title="Tempo desde a última atualização (proxy para tempo na etapa)">
+                                    {dias === 0 ? 'Hoje nesta etapa' : dias === 1 ? 'Há 1 dia nesta etapa' : `Há ${dias} dias nesta etapa`}
+                                  </p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedLead(lead)
+                            }}
+                            className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
+                          >
+                            Ver detalhes
+                          </button>
+                        </div>
+                      )
+                    })}
+                </div>
+                {performanceLeadsList.length > LISTA_LEADS_INICIAL && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandPerformanceLeads(!expandPerformanceLeads)}
+                    className="mt-4 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    {expandPerformanceLeads ? (
+                      <>Mostrar menos (primeiros {LISTA_LEADS_INICIAL}) <ChevronUp className="h-4 w-4" /></>
+                    ) : (
+                      <>Ver todos os {performanceLeadsList.length} leads <ChevronDown className="h-4 w-4" /></>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </DashboardSection>
+        </div>
+      )}
+
         </>
       )}
 
@@ -2580,8 +2892,8 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         icon={<Table2 className="h-5 w-5" />}
         title="Lista de leads"
         description={
-          selectedSolicitanteKey || filterListaPorMotivo
-            ? `${listaLeadsFiltrada.length} registro(s) — filtrado por ${selectedSolicitanteKey ? getSolicitanteLabel(selectedSolicitanteKey === '(sem e-mail)' ? '' : selectedSolicitanteKey) : ''}${selectedSolicitanteKey && filterListaPorMotivo ? ' e ' : ''}${filterListaPorMotivo ? `motivo: ${filterListaPorMotivo}` : ''}. Clique em "Limpar filtros" para ver todos.`
+          filterLeadsSolicitante || filterListaPorMotivo
+            ? `${listaLeadsFiltrada.length} registro(s) — filtrado por ${filterLeadsSolicitante ? getSolicitanteLabel(filterLeadsSolicitante === '(sem e-mail)' ? '' : filterLeadsSolicitante) : ''}${filterLeadsSolicitante && filterListaPorMotivo ? ' e ' : ''}${filterListaPorMotivo ? `motivo: ${filterListaPorMotivo}` : ''}. Clique em "Limpar filtros" para ver todos.`
             : `${listaLeadsFiltrada.length} registro(s). Primeiros ${expandListaLeads ? listaLeadsFiltrada.length : Math.min(LISTA_LEADS_INICIAL, listaLeadsFiltrada.length)} exibidos. Use "Ver" para detalhes.`
         }
         fullWidth
@@ -2652,12 +2964,12 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
             ))}
           </select>
         </div>
-        {(selectedSolicitanteKey || filterListaPorMotivo) && (
+        {(filterLeadsSolicitante || filterListaPorMotivo) && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
-                setSelectedSolicitanteKey(null)
+                setFilterLeadsSolicitante('')
                 setFilterListaPorMotivo(null)
               }}
               className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -2742,11 +3054,39 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                               )}
                             </div>
                           </div>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium text-gray-600">Criado em:</span>{' '}
                             {lead.created_at_iso
                               ? new Date(lead.created_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
                               : '—'}
                           </p>
+                          {lead.status === 'win' && (() => {
+                            const dataVenda = lead.updated_at_iso || lead.created_at_iso || ''
+                            return (
+                              <p className="text-xs text-post font-medium mt-0.5">
+                                <span className="text-gray-600">Vendida em:</span>{' '}
+                                {dataVenda ? new Date(dataVenda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                              </p>
+                            )
+                          })()}
+                          {lead.status === 'lost' && (() => {
+                            const dataPerda = lead.updated_at_iso || lead.created_at_iso || ''
+                            return (
+                              <p className="text-xs text-red-600 font-medium mt-0.5">
+                                <span className="text-gray-600">Perdida em:</span>{' '}
+                                {dataPerda ? new Date(dataPerda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                              </p>
+                            )
+                          })()}
+                          {(lead.status === 'ongoing' || (!lead.status || (lead.status !== 'win' && lead.status !== 'lost'))) && (() => {
+                            const dias = diasNaEtapa(lead)
+                            if (dias === null) return null
+                            return (
+                              <p className="text-xs text-sky-600 mt-0.5 font-medium" title="Tempo desde a última atualização (proxy para tempo na etapa)">
+                                {dias === 0 ? 'Hoje nesta etapa' : dias === 1 ? 'Há 1 dia nesta etapa' : `Há ${dias} dias nesta etapa`}
+                              </p>
+                            )
+                          })()}
                         </div>
                       </div>
                       <button
@@ -2846,74 +3186,6 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         </div>
       )}
 
-      {/* Seção: Etapas do funil */}
-      <DashboardSection
-        icon={<Filter className="h-5 w-5" />}
-        title="Etapas do funil"
-        description="Etapas oficiais do funil (ordem). A API exclui outras etapas. Selecione abaixo quais considerar (vazio = todas)."
-        fullWidth
-      >
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 mb-4">
-          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Etapas do Funil de vendas (ordem)</p>
-          <p className="text-sm text-gray-800">{ETAPAS_FUNIL_VENDAS.join(' > ')}</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="rounded-lg border border-gray-100 bg-gray-50/80 p-3">
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Etapas excluídas pela API (não entram)</p>
-            <p className="text-sm text-gray-700">{STAGES_IGNORADOS.join(', ')}</p>
-          </div>
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-            <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Etapas consideradas (após seu filtro)</p>
-            {etapasConsideradasNosDados.length === 0 ? (
-              <p className="text-sm text-gray-600">Nenhuma etapa nos dados com os filtros atuais.</p>
-            ) : (
-              <p className="text-sm text-gray-800">{etapasConsideradasNosDados.join(', ')}</p>
-            )}
-          </div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-3">
-          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">Selecionar etapas a considerar</p>
-          <p className="text-xs text-gray-500 mb-2">Marque as etapas que devem entrar na análise. Nenhuma seleção = todas.</p>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setSelectedEtapas([])}
-              className="text-xs font-medium px-2 py-1 rounded bg-primary text-white hover:bg-primary/90"
-            >
-              Considerar todas
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {etapasDisponiveisParaFiltro.length === 0 ? (
-              <p className="text-sm text-gray-500">Carregue os dados para ver as etapas disponíveis.</p>
-            ) : (
-              etapasDisponiveisParaFiltro.map((etapa) => {
-                const checked = selectedEtapas.length === 0 || selectedEtapas.includes(etapa)
-                return (
-                  <label key={etapa} className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-gray-800">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        if (selectedEtapas.length === 0) {
-                          setSelectedEtapas(etapasDisponiveisParaFiltro.filter((x) => x !== etapa))
-                        } else if (selectedEtapas.includes(etapa)) {
-                          const next = selectedEtapas.filter((x) => x !== etapa)
-                          setSelectedEtapas(next.length === 0 ? [] : next)
-                        } else {
-                          setSelectedEtapas(sortEtapasByFunil([...selectedEtapas, etapa]))
-                        }
-                      }}
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <span>{etapa}</span>
-                  </label>
-                )
-              })
-            )}
-          </div>
-        </div>
-      </DashboardSection>
         </>
       )}
 
@@ -2933,10 +3205,16 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
               {(expandPerdidasSolicitante ? perdidasPorSolicitante : perdidasPorSolicitante.slice(0, TOP_N)).map((item, idx) => {
                 const areaLabel = item.emailKey !== '(sem e-mail)' ? getAreaByEmail(item.emailKey) : null
                 const AreaIconCard = areaLabel && areaLabel in AREA_ICONS ? AREA_ICONS[areaLabel] : null
+                const isSelected = selectedPerdasSolicitanteKey === item.emailKey
                 return (
-                  <div
+                  <button
                     key={item.emailKey}
-                    className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md hover:border-red-200/50 transition-all"
+                    type="button"
+                    onClick={() => setSelectedPerdasSolicitanteKey(isSelected ? null : item.emailKey)}
+                    className={cn(
+                      'flex items-center gap-4 rounded-2xl border p-4 shadow-sm text-left transition-all hover:shadow-md',
+                      isSelected ? 'border-red-300 bg-red-50/80 ring-2 ring-red-200' : 'border-gray-200 bg-white hover:border-red-200/50'
+                    )}
                   >
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-100 text-sm font-bold text-red-700">
                       {idx + 1}
@@ -2964,7 +3242,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
                     <span className="flex-shrink-0 rounded-xl bg-red-100 px-3 py-1.5 text-sm font-bold text-red-700 tabular-nums">
                       <CountUpValue value={item.total} />
                     </span>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -2984,113 +3262,147 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
           </>
         )}
       </DashboardSection>
-        </>
+
+      {/* Seção: Leads perdidas do vendedor (mesma aba, com scroll e card completo) */}
+      {selectedPerdasSolicitanteKey && (
+        <div ref={perdasLeadsSectionRef} className="scroll-mt-6">
+          <DashboardSection
+            icon={<Table2 className="h-5 w-5" />}
+            title={`Leads perdidas de ${getSolicitanteLabel(selectedPerdasSolicitanteKey === '(sem e-mail)' ? '' : selectedPerdasSolicitanteKey)}`}
+            description={`${perdidasLeadsList.length} lead(s) perdida(s) no período. Clique em "Ver detalhes" para mais informações.`}
+            fullWidth
+          >
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => { setSelectedPerdasSolicitanteKey(null); setExpandPerdasLeads(false) }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Eraser className="h-4 w-4" />
+                Limpar seleção
+              </button>
+            </div>
+            {perdidasLeadsList.length === 0 ? (
+              <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead perdida para este solicitante no período.</p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {[...perdidasLeadsList]
+                    .sort((a, b) => {
+                      const da = a.updated_at_iso || a.created_at_iso || ''
+                      const db = b.updated_at_iso || b.created_at_iso || ''
+                      return db.localeCompare(da)
+                    })
+                    .slice(0, expandPerdasLeads ? undefined : LISTA_LEADS_INICIAL)
+                    .map((lead) => {
+                      const nome = lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`
+                      const inicial = nome.charAt(0).toUpperCase()
+                      const leadEmail = (lead.email_solicitante ?? lead.email_notificar ?? '') || ''
+                      const solicitanteAvatar = getTeamMember(leadEmail)?.avatar ?? null
+                      const areaLabel = getAreaByEmail(leadEmail) ?? ''
+                      const AreaIconComp = areaLabel ? AREA_ICONS[areaLabel] : null
+                      return (
+                        <div
+                          key={lead.rowIndex}
+                          className="group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-red-200/50 hover:bg-gray-50/50"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-700 font-bold text-base ring-2 ring-red-200/50">
+                              {inicial}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-gray-900 truncate" title={nome}>{nome}</p>
+                              <p className="text-sm text-gray-600 truncate mt-0.5" title={lead.razao_social || ''}>
+                                {lead.razao_social || '—'}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">Perdida</span>
+                                {lead.stage_name && (
+                                  <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 truncate max-w-[120px]" title={lead.stage_name}>
+                                    {lead.stage_name}
+                                  </span>
+                                )}
+                                {lead.funil && (
+                                  <span className="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary truncate max-w-[100px]" title={lead.funil}>
+                                    {lead.funil}
+                                  </span>
+                                )}
+                                {(lead.motivo_perda ?? '').trim() && (
+                                  <span className="inline-flex rounded-md bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800 truncate max-w-[140px]" title={String(lead.motivo_perda)}>
+                                    {String(lead.motivo_perda).trim() || '—'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-2 flex items-center gap-2 min-w-0">
+                                {solicitanteAvatar ? (
+                                  <img src={solicitanteAvatar} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white shadow flex-shrink-0" />
+                                ) : (
+                                  <div className="h-7 w-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs flex-shrink-0">
+                                    {(getSolicitanteLabel(leadEmail) || '?').charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-gray-800 truncate" title={getSolicitanteLabel(leadEmail)}>
+                                    {getSolicitanteLabel(leadEmail) || '—'}
+                                  </span>
+                                  {AreaIconComp && (
+                                    <span className="flex-shrink-0 text-primary" title={areaLabel}>
+                                      <AreaIconComp className="h-3.5 w-3.5" />
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                <span className="font-medium text-gray-600">Criado em:</span>{' '}
+                                {lead.created_at_iso
+                                  ? new Date(lead.created_at_iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                  : '—'}
+                              </p>
+                              {(() => {
+                                const dataPerda = lead.updated_at_iso || lead.created_at_iso || ''
+                                return (
+                                  <p className="text-xs text-red-600 font-medium mt-0.5">
+                                    <span className="text-gray-600">Perdida em:</span>{' '}
+                                    {dataPerda ? new Date(dataPerda).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                                  </p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedLead(lead)
+                            }}
+                            className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
+                          >
+                            Ver detalhes
+                          </button>
+                        </div>
+                      )
+                    })}
+                </div>
+                {perdidasLeadsList.length > LISTA_LEADS_INICIAL && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandPerdasLeads(!expandPerdasLeads)}
+                    className="mt-4 flex w-full items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                  >
+                    {expandPerdasLeads ? (
+                      <>Mostrar menos (primeiros {LISTA_LEADS_INICIAL}) <ChevronUp className="h-4 w-4" /></>
+                    ) : (
+                      <>Ver todos os {perdidasLeadsList.length} leads <ChevronDown className="h-4 w-4" /></>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </DashboardSection>
+        </div>
       )}
 
-      {/* Lista de leads (ao clicar no card Ganhas ou em um vendedor na Performance) — visível em qualquer aba */}
-      {showWonLeadsPanel && (resumo.won > 0 || selectedSolicitanteKey) && (
-        <DashboardSection
-          icon={<Users className="h-5 w-5" />}
-          title={selectedSolicitanteKey ? `Leads: ${getSolicitanteLabel(selectedSolicitanteKey === '(sem e-mail)' ? '' : selectedSolicitanteKey)}` : 'Leads vendidas'}
-          description="Clique em um lead para ver detalhes."
-          fullWidth
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            {selectedSolicitanteKey && (
-              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 p-1">
-                {[
-                  { value: 'all' as const, label: 'Todos' },
-                  { value: 'win' as const, label: 'Vendidas' },
-                  { value: 'lost' as const, label: 'Perdidas' },
-                  { value: 'ongoing' as const, label: 'Em andamento' },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setFilterLeadsPanelStatus(value)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                      filterLeadsPanelStatus === value
-                        ? 'bg-white text-primary shadow border border-gray-200'
-                        : 'text-gray-600 hover:bg-white/60'
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setShowWonLeadsPanel(false)
-                setSelectedSolicitanteKey(null)
-              }}
-              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors"
-            >
-              Fechar lista
-            </button>
-          </div>
-          {(() => {
-            const listToShow = selectedSolicitanteKey ? leadsPainelFiltradasPorStatus : wonLeadsFiltradasPorSolicitante
-            if (listToShow.length === 0) {
-              return <p className="text-sm text-gray-500 py-6 text-center">Nenhuma lead para exibir.</p>
-            }
-            return (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {listToShow.map((lead) => {
-                const nome = lead.nome_lead || lead.id_registro || `Linha ${lead.rowIndex}`
-                const inicial = nome.charAt(0).toUpperCase()
-                return (
-                  <button
-                    key={lead.rowIndex}
-                    type="button"
-                    onClick={() => setSelectedLead(lead)}
-                    className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:shadow-md hover:border-post/40 hover:bg-post/5"
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-post/15 text-post font-bold text-lg ring-2 ring-post/20 group-hover:ring-post/40 transition-colors">
-                      {inicial}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-gray-900 truncate" title={nome}>{nome}</p>
-                      <p className="text-sm text-gray-600 truncate mt-0.5" title={lead.razao_social || ''}>
-                        {lead.razao_social || '—'}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-2">
-                        {selectedSolicitanteKey && (
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                              lead.status === 'win' && 'bg-post/20 text-post',
-                              lead.status === 'lost' && 'bg-red-100 text-red-700',
-                              (lead.status === 'ongoing' || !lead.status) && 'bg-sky-100 text-sky-700'
-                            )}
-                          >
-                            {lead.status === 'win' ? 'Vendida' : lead.status === 'lost' ? 'Perdida' : 'Em andamento'}
-                          </span>
-                        )}
-                        {lead.stage_name && (
-                          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                            {lead.stage_name}
-                          </span>
-                        )}
-                        {lead.funil && (
-                          <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                            {lead.funil}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-gray-400 group-hover:text-post transition-colors" aria-hidden>
-                      →
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            )
-          })()}
-        </DashboardSection>
+        </>
       )}
 
       {/* Modal detalhe do lead (todas as colunas da planilha) */}

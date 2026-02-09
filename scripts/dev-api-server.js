@@ -10,6 +10,9 @@ import { dirname, join } from 'path'
 import express from 'express'
 import handlerValidar from '../api/validar-sheets.js'
 import handlerWhatsapp from '../api/enviar-whatsapp.js'
+import handlerSyncAnotacoes from '../api/sync-anotacoes.js'
+import handlerGoogleOAuth from '../api/google-oauth.js'
+import handlerGoogleOAuthRefresh from '../api/google-oauth-refresh.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -40,6 +43,9 @@ app.use(express.json())
 
 app.all('/api/validar-sheets', (req, res) => handlerValidar(req, res))
 app.all('/api/enviar-whatsapp', (req, res) => handlerWhatsapp(req, res))
+app.all('/api/sync-anotacoes', (req, res) => handlerSyncAnotacoes(req, res))
+app.all('/api/google-oauth', (req, res) => handlerGoogleOAuth(req, res))
+app.all('/api/google-oauth-refresh', (req, res) => handlerGoogleOAuthRefresh(req, res))
 
 app.listen(PORT, () => {
   console.log(`[dev-api] API local em http://localhost:${PORT} (proxy do Vite em /api)`)

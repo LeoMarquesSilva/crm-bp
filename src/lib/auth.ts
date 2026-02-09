@@ -15,13 +15,13 @@ export function getExpectedPassword(): string {
 
 export function isAuthenticated(): boolean {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem(AUTH_STORAGE_KEY) === '1'
+  return localStorage.getItem(AUTH_STORAGE_KEY) === '1'
 }
 
 export function setAuthenticated(): void {
-  sessionStorage.setItem(AUTH_STORAGE_KEY, '1')
+  localStorage.setItem(AUTH_STORAGE_KEY, '1')
 }
 
 export function clearAuthenticated(): void {
-  sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  localStorage.removeItem(AUTH_STORAGE_KEY)
 }

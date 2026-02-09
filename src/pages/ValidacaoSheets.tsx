@@ -7,6 +7,7 @@ import { getTeamMember, getSolicitanteKey } from '@/data/teamAvatars'
 import { supabase } from '@/lib/supabase'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
+const API = (path: string) => `${API_BASE}/api${path}`
 const STORAGE_KEY = 'crm-bp-google-oauth'
 const SESSION_ID_KEY = 'crm-bp-google-session-id'
 const STORAGE_KEY_VALIDATION_CONFIG = 'crm-bp-validation-config'
@@ -492,31 +493,50 @@ export function ValidacaoSheets() {
 
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
+  const tryRefreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(API('/google-oauth-refresh'), { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok || !json.access_token) return false
+      const sec = typeof json.expires_in === 'number' && json.expires_in > 0 ? json.expires_in : 3600
+      setAccessToken(json.access_token)
+      saveToken(json.access_token, sec)
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const login = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      const sec = typeof tokenResponse.expires_in === 'number' && tokenResponse.expires_in > 0 ? tokenResponse.expires_in : 3600
-      setAccessToken(tokenResponse.access_token)
-      saveToken(tokenResponse.access_token, sec)
-      if (supabase) {
-        const sessionId = getOrCreateSessionId()
-        if (sessionId) {
-          supabase
-            .from('sessoes_google')
-            .upsert(
-              {
-                session_id: sessionId,
-                access_token: tokenResponse.access_token,
-                expires_at: new Date(Date.now() + sec * 1000).toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'session_id' }
-            )
-            .then(() => {})
-        }
+    flow: 'auth-code',
+    access_type: 'offline',
+    prompt: 'consent',
+    onSuccess: async (codeResponse: { code?: string }) => {
+      const code = codeResponse?.code
+      if (!code) {
+        setError('Resposta inválida do Google.')
+        return
       }
-    setError(null)
-    setData(null)
-  },
+      try {
+        const res = await fetch(API('/google-oauth'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, redirect_uri: window.location.origin }),
+        })
+        const json = await res.json()
+        if (!res.ok || !json.access_token) {
+          setError(json.error || 'Não foi possível conectar com o Google.')
+          return
+        }
+        const sec = typeof json.expires_in === 'number' && json.expires_in > 0 ? json.expires_in : 3600
+        setAccessToken(json.access_token)
+        saveToken(json.access_token, sec)
+        setError(null)
+        setData(null)
+      } catch {
+        setError('Não foi possível conectar com o Google. Tente novamente.')
+      }
+    },
     onError: () => setError('Não foi possível conectar com o Google. Tente novamente.'),
     scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
   })
@@ -524,39 +544,37 @@ export function ValidacaoSheets() {
   const disconnect = () => {
     setAccessToken(null)
     clearStoredToken()
-    if (supabase) {
-      const sessionId = getOrCreateSessionId()
-      if (sessionId) supabase.from('sessoes_google').delete().eq('session_id', sessionId).then(() => {})
-    }
     setData(null)
   }
 
-  // Restaura sessão do Supabase quando o token local está vazio (ex.: outra aba ou localStorage limpo)
+  // Restaura sessão do Supabase quando o token local está vazio — tenta token do browser, depois 'shared'; se expirado, tenta refresh
   useEffect(() => {
     if (accessToken || !supabase) {
       if (!accessToken) setSessionRestoreAttempted(true)
       return
     }
-    const sessionId = getOrCreateSessionId()
-    if (!sessionId) {
-      setSessionRestoreAttempted(true)
-      return
-    }
-    const chain = supabase
-      .from('sessoes_google')
-      .select('access_token, expires_at')
-      .eq('session_id', sessionId)
-      .maybeSingle()
-      .then(({ data: row, error }) => {
-        if (error || !row?.access_token) return
-        const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : 0
-        if (expiresAt <= Date.now() - TOKEN_GRACE_MS) return
-        const sec = Math.max(0, Math.round((expiresAt - Date.now()) / 1000))
-        saveToken(row.access_token, sec)
+    const tryRestore = async (sid: string): Promise<boolean> => {
+      const { data: row, error } = await supabase
+        .from('sessoes_google')
+        .select('access_token, expires_at')
+        .eq('session_id', sid)
+        .maybeSingle()
+      if (error || !row?.access_token) return false
+      const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : 0
+      if (expiresAt > Date.now() - 60000) {
+        saveToken(row.access_token, Math.max(0, Math.round((expiresAt - Date.now()) / 1000)))
         setAccessToken(row.access_token)
-      })
-    void Promise.resolve(chain).finally(() => setSessionRestoreAttempted(true))
-  }, [accessToken])
+        return true
+      }
+      return tryRefreshToken()
+    }
+    ;(async () => {
+      const sessionId = getOrCreateSessionId()
+      let ok = await tryRestore(sessionId)
+      if (!ok) ok = await tryRestore('shared')
+      setSessionRestoreAttempted(true)
+    })()
+  }, [accessToken, supabase, tryRefreshToken])
 
   // Carrega histórico de envios WhatsApp quando a aba é exibida
   useEffect(() => {

@@ -1,6 +1,6 @@
 # Configuração – Google Sheets (validação dentro do sistema)
 
-Para usar **Validar planilha (Sheets)** dentro do CRM, é preciso configurar o **Client ID** do Google OAuth. O **Client Secret** não é usado no fluxo atual (só leitura da planilha com a conta do usuário).
+Para usar **Validar planilha (Sheets)** dentro do CRM, é preciso configurar o **Client ID** e o **Client Secret** do Google OAuth. O Client Secret é usado apenas no backend para trocar o código de autorização por tokens e obter o refresh_token, que mantém a autenticação renovada indefinidamente.
 
 ---
 
@@ -35,8 +35,12 @@ As URLs dependem de onde você abre o app: por exemplo `http://localhost:5173`, 
   - No **Vercel** (ou outro host), configure a mesma variável em **Settings → Environment Variables** para o build e o ambiente de produção.
 
 - **Client Secret**  
-  - Não é necessário para o fluxo “Conectar com Google” + ler planilha.  
-  - Se no futuro você fizer troca de código por token no backend (ex.: notificação por e-mail usando a conta do usuário), aí sim use o Client Secret **apenas em variáveis de ambiente do backend**, nunca no frontend nem em repositório.
+  - Obrigatório para o fluxo de autenticação permanente. O backend usa para trocar o código por access_token e refresh_token.  
+  - Adicione no **`.env`** ou **`.env.local`** (nunca no frontend nem em repositório):
+    ```env
+    GOOGLE_CLIENT_SECRET=seu-client-secret
+    ```
+  - No Vercel, configure `GOOGLE_CLIENT_SECRET` em **Environment Variables** (sem prefixo VITE_).
 
 - **Planilha fixa (opcional)**  
   - A tela de Validação usa uma planilha fixa por ambiente. Defina no **`.env`** ou **`.env.local`**:

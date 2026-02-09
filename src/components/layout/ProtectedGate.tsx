@@ -10,11 +10,11 @@ function getExpectedPassword(): string {
 
 function isUnlocked(): boolean {
   if (typeof window === 'undefined') return false
-  return sessionStorage.getItem(STORAGE_KEY) === '1'
+  return localStorage.getItem(STORAGE_KEY) === '1'
 }
 
 function setUnlocked(): void {
-  sessionStorage.setItem(STORAGE_KEY, '1')
+  localStorage.setItem(STORAGE_KEY, '1')
 }
 
 interface ProtectedGateProps {

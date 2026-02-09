@@ -77,6 +77,10 @@ const COLUMN_TO_KEY = {
   // Datas para SLA (tempo na etapa / última atualização)
   updated_at: 'updated_at',
   date_update: 'updated_at',
+  follow_up: 'follow_up',
+  follow_up_anotacao: 'follow_up_anotacao',
+  ultimo_followup: 'follow_up',
+  ultimo_follow_up: 'follow_up',
   ultima_atualizacao: 'updated_at',
   data_atualizacao: 'updated_at',
   data_de_atualizacao: 'updated_at',
@@ -1164,9 +1168,17 @@ export default async function handler(req, res) {
 
       const updated_at_iso = parseDateSheet(data.updated_at ?? data.date_update)
       const created_at_iso = parseDateSheet(data.created_at ?? data.date_create)
-      const refDate = updated_at_iso || created_at_iso
-      const refTs = refDate ? new Date(refDate).getTime() : null
-      const diasDesdeRef = refTs != null ? (Date.now() - refTs) / (24 * 60 * 60 * 1000) : null
+      const follow_up_iso = parseDateSheet(data.follow_up)
+      const follow_up_anotacao = (data.follow_up_anotacao ?? '').toString().trim() || null
+
+      const refMovimentacao = updated_at_iso || created_at_iso
+      const tsMovimentacao = refMovimentacao ? new Date(refMovimentacao).getTime() : null
+      const diasDesdeMovimentacao =
+        tsMovimentacao != null ? Math.floor((Date.now() - tsMovimentacao) / (24 * 60 * 60 * 1000)) : null
+
+      const tsFollowUp = follow_up_iso ? new Date(follow_up_iso).getTime() : null
+      const diasDesdeFollowUp =
+        tsFollowUp != null ? Math.floor((Date.now() - tsFollowUp) / (24 * 60 * 60 * 1000)) : null
 
       results.push({
         rowIndex: i + 1,
@@ -1185,7 +1197,10 @@ export default async function handler(req, res) {
         areas,
         updated_at_iso: updated_at_iso || null,
         created_at_iso: created_at_iso || null,
-        dias_desde_atualizacao: diasDesdeRef != null ? Math.floor(diasDesdeRef) : null,
+        follow_up_iso: follow_up_iso || null,
+        follow_up_anotacao,
+        dias_desde_movimentacao: diasDesdeMovimentacao,
+        dias_desde_followup: diasDesdeFollowUp,
         razao_social: (data.razao_social ?? data.razao_social_cp ?? '').toString().trim() || null,
         nome_lead: (data.nome ?? data.nome_lead ?? '').toString().trim() || null,
         valor_mensal_fixo_cc: (data.valor_mensal_fixo_cc ?? '').toString().trim() || null,
