@@ -87,6 +87,11 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Societário e Contratos',
     name: 'Jansonn Mendonça Batista',
   },
+  'henrique.nascimento@bpplaw.com.br': {
+    avatar: 'https://www.bismarchipires.com.br/blog/wp-content/uploads/2026/02/Henrique-Franco-Nascimento.jpeg',
+    tag: 'Societário e Contratos',
+    name: 'Henrique Franco Nascimento',
+  },
   // Operações Legais
   'felipe@bpplaw.com.br': {
     avatar: `${BASE_URL}/legal-ops/felipe-carmargo.jpg`,
