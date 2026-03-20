@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, ExternalLink, BarChart3, Clock, LogOut } from 'lucide-react'
+import { TrendingUp, ExternalLink, BarChart3, Clock, LogOut, FileCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clearAuthenticated } from '@/lib/auth'
 
@@ -8,6 +8,7 @@ export function Header() {
   const isValidacao = pathname === '/validacao'
   const isSla = pathname === '/sla'
   const isDashboard = pathname === '/analise-planilha'
+  const isDueDiligence = pathname === '/due-diligence'
 
   return (
     <header 
@@ -66,6 +67,17 @@ export function Header() {
           >
             <BarChart3 className="h-4 w-4" />
             Dashboard
+          </Link>
+          <Link
+            to="/due-diligence"
+            className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+              isDueDiligence
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+          >
+            <FileCheck className="h-4 w-4" />
+            Due Diligence
           </Link>
         </motion.nav>
 

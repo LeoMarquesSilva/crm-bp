@@ -12,6 +12,7 @@ import { Login } from '@/pages/Login'
 import { ValidacaoSheets } from '@/pages/ValidacaoSheets'
 import { LeadsForaSLA } from '@/pages/LeadsForaSLA'
 import { AnalisePlanilha } from '@/pages/AnalisePlanilha'
+import { DueDiligence } from '@/pages/DueDiligence'
 import { isAuthenticated } from '@/lib/auth'
 
 function LayoutContent() {
@@ -24,6 +25,7 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const { pathname } = useLocation()
   const isDashboard = pathname === '/analise-planilha'
+  const isDueDiligence = pathname === '/due-diligence'
 
   useEffect(() => {
     setLoggedIn(isAuthenticated())
@@ -45,19 +47,19 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
-      {!isDashboard && <Banner />}
+      {!isDashboard && !isDueDiligence && <Banner />}
       <div className="flex flex-1 overflow-hidden">
-        {!isDashboard && <Sidebar />}
+        {!isDashboard && !isDueDiligence && <Sidebar />}
         <main
           className={
-            isDashboard
+            isDashboard || isDueDiligence
               ? 'flex-1 overflow-auto bg-gradient-to-br from-gray-50 via-white to-gray-50/80'
               : 'flex-1 overflow-auto'
           }
         >
           <div
             className={
-              isDashboard
+              isDashboard || isDueDiligence
                 ? 'w-full min-h-full px-4 py-4 lg:px-6 lg:py-5'
                 : 'max-w-7xl mx-auto p-6 lg:p-8'
             }
@@ -68,6 +70,7 @@ function App() {
               <Route path="/validacao" element={<ProtectedGate areaName="Validação"><ValidacaoSheets /></ProtectedGate>} />
               <Route path="/sla" element={<ProtectedGate areaName="SLA"><LeadsForaSLA /></ProtectedGate>} />
               <Route path="/analise-planilha" element={<ProtectedGate areaName="Dashboard"><AnalisePlanilha /></ProtectedGate>} />
+              <Route path="/due-diligence" element={<ProtectedGate areaName="Due Diligence"><DueDiligence /></ProtectedGate>} />
             </Routes>
           </div>
         </main>

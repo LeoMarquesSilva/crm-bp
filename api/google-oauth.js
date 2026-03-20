@@ -14,7 +14,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
-  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID
+  // Usar o mesmo Client ID que o frontend (VITE_GOOGLE_CLIENT_ID) para trocar o code corretamente
+  const clientId = process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
@@ -27,11 +28,12 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
-  const { code, redirect_uri } = body
+  const { code, redirect_uri, session_id } = body
   if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: 'code é obrigatório' })
   }
   const redirectUri = redirect_uri || req.headers.origin || 'http://localhost:5173'
+  const sessionId = typeof session_id === 'string' && session_id.trim() ? session_id.trim() : 'shared'
 
   try {
     const params = new URLSearchParams({
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
 
     const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString()
     const row = {
-      session_id: 'shared',
+      session_id: sessionId,
       access_token,
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
