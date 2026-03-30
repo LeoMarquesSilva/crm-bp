@@ -3,6 +3,7 @@ import { Alert } from '@/components/ui/Alert'
 import { CheckCircle2, Loader2, Info, AlertCircle, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getSolicitanteOptions } from '@/data/teamAvatars'
+import { syncDueDiligenceLeadsFromFunnel } from '@/lib/due-diligence/api'
 
 function onlyDigits(s: string): string {
   return (s || '').replace(/\D/g, '')
@@ -310,6 +311,16 @@ export function LeadForm({ alerts = [] }: LeadFormProps) {
       dadosExistentes.push(dadosParaEnvio)
       localStorage.setItem('leads', JSON.stringify(dadosExistentes))
       console.log('💾 Dados salvos no localStorage:', dadosParaEnvio)
+
+      if (formData.due_diligence === 'Sim') {
+        void syncDueDiligenceLeadsFromFunnel(
+          formData.razao_social_cnpj.map((item) => ({
+            razao_social: item.razao_social,
+            cnpj: item.cnpj,
+          })),
+          formData.solicitante || null
+        ).catch((err) => console.error('[Due Diligence] Falha ao sincronizar leads no Supabase:', err))
+      }
 
       const webhookSucesso = await enviarWebhook(dadosParaEnvio)
 

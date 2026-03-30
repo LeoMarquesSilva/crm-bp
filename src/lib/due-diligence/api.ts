@@ -1,5 +1,14 @@
 import { supabase } from '@/lib/supabase'
-import type { DueDiligenceLead, DueDiligenceAreaRow, DueDiligenceAreaId, DueDiligenceAreaStatus } from './types'
+import type {
+  DueDiligenceLead,
+  DueDiligenceAreaRow,
+  DueDiligenceAreaId,
+  DueDiligenceAreaStatus,
+  AreaChartOptionsPartial,
+  AreaDetailConfig,
+  ManualProcessSlideRow,
+  LeadPptAreaChartDefaults,
+} from './types'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API = (path: string) => `${API_BASE}/api${path}`
@@ -37,6 +46,38 @@ export async function addDueDiligenceLead(lead: {
   return data as DueDiligenceLead
 }
 
+/** Defaults globais de gráficos (estilo/tipo/título por slide) para todos os decks deste lead. */
+export async function updateLeadPptAreaChartDefaults(
+  leadId: string,
+  ppt_area_chart_defaults: LeadPptAreaChartDefaults | null
+): Promise<DueDiligenceLead> {
+  if (!supabase) throw new Error('Supabase não configurado.')
+  const { data, error } = await supabase
+    .from('due_diligence_leads')
+    .update({ ppt_area_chart_defaults })
+    .eq('id', leadId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as DueDiligenceLead
+}
+
+/** Persiste opções globais do PowerPoint (blocos, ordem, layout) no lead. */
+export async function updateLeadPptChartOptions(
+  leadId: string,
+  ppt_chart_options: Record<string, unknown>
+): Promise<DueDiligenceLead> {
+  if (!supabase) throw new Error('Supabase não configurado.')
+  const { data, error } = await supabase
+    .from('due_diligence_leads')
+    .update({ ppt_chart_options })
+    .eq('id', leadId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as DueDiligenceLead
+}
+
 export async function updateDueDiligenceLead(
   id: string,
   lead: { razao_social?: string; cnpj?: string | null; nome_lead?: string | null }
@@ -64,6 +105,29 @@ export async function deleteDueDiligenceLead(id: string): Promise<void> {
   if (!supabase) throw new Error('Supabase não configurado.')
   const { error } = await supabase.from('due_diligence_leads').delete().eq('id', id)
   if (error) throw error
+}
+
+/**
+ * Cria um lead DUE no Supabase por empresa (razão social) e garante as linhas de área.
+ * Não lança se Supabase não estiver configurado; falhas de rede são relançadas para o caller tratar.
+ */
+export async function syncDueDiligenceLeadsFromFunnel(
+  items: { razao_social: string; cnpj?: string | null }[],
+  nomeLead?: string | null
+): Promise<void> {
+  if (!supabase) return
+  const nome = nomeLead?.trim() || null
+  for (const item of items) {
+    const rs = (item.razao_social || '').trim()
+    if (!rs) continue
+    const digits = (item.cnpj || '').replace(/\D/g, '')
+    const lead = await addDueDiligenceLead({
+      razao_social: rs,
+      cnpj: digits.length ? digits : null,
+      nome_lead: nome,
+    })
+    await ensureAreasForLead(lead.id)
+  }
 }
 
 export async function ensureAreasForLead(leadId: string): Promise<DueDiligenceAreaRow[]> {
@@ -105,6 +169,10 @@ export async function setAreaStatus(
     file_name?: string | null
     file_url?: string | null
     parsed_data?: Record<string, unknown> | null
+    area_chart_options?: AreaChartOptionsPartial | null
+    area_detail_config?: AreaDetailConfig | null
+    manual_process_slides?: ManualProcessSlideRow[] | null
+    skipped_presentation?: boolean
   }
 ): Promise<DueDiligenceAreaRow> {
   if (!supabase) throw new Error('Supabase não configurado.')
@@ -165,4 +233,99 @@ export async function uploadDueDiligenceFile(
     throw new Error(errMsg)
   }
   return data.webViewLink || `https://drive.google.com/file/d/${data.id}/view`
+}
+
+/** Atualiza apenas campos JSON/prefs de uma área (sem mudar status). */
+export async function updateAreaPresentationFields(
+  areaId: string,
+  fields: {
+    parsed_data?: Record<string, unknown> | null
+    area_chart_options?: AreaChartOptionsPartial | null
+    area_detail_config?: AreaDetailConfig | null
+    manual_process_slides?: ManualProcessSlideRow[] | null
+    skipped_presentation?: boolean
+  }
+): Promise<DueDiligenceAreaRow> {
+  if (!supabase) throw new Error('Supabase não configurado.')
+  const payload: Record<string, unknown> = {}
+  for (const k of Object.keys(fields) as (keyof typeof fields)[]) {
+    const v = fields[k]
+    if (v !== undefined) payload[k] = v
+  }
+  if (Object.keys(payload).length === 0) {
+    const { data } = await supabase.from('due_diligence_areas').select('*').eq('id', areaId).single()
+    return data as DueDiligenceAreaRow
+  }
+  const { data, error } = await supabase
+    .from('due_diligence_areas')
+    .update(payload)
+    .eq('id', areaId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as DueDiligenceAreaRow
+}
+
+export async function updateDueDiligenceLeadFinalPpt(
+  leadId: string,
+  final: { final_ppt_url: string | null; final_ppt_file_id?: string | null }
+): Promise<DueDiligenceLead> {
+  if (!supabase) throw new Error('Supabase não configurado.')
+  const { data, error } = await supabase
+    .from('due_diligence_leads')
+    .update({
+      final_ppt_url: final.final_ppt_url,
+      final_ppt_file_id: final.final_ppt_file_id ?? null,
+    })
+    .eq('id', leadId)
+    .select()
+    .single()
+  if (error) throw error
+  return data as DueDiligenceLead
+}
+
+/**
+ * Envia PPT final para pasta "Due Diligence / {razao_social}" no Drive e retorna { webViewLink, id }.
+ */
+export async function uploadDueDiligenceFinalPptx(
+  leadId: string,
+  razaoSocial: string,
+  fileBase64: string,
+  fileName: string,
+  accessToken: string
+): Promise<{ webViewLink: string; id: string }> {
+  const res = await fetch(API('/upload-google-drive'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: accessToken,
+      file_name: fileName,
+      file_base64: fileBase64,
+      mime_type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      due_diligence_folder: true,
+      due_diligence_razao_social: razaoSocial.trim(),
+    }),
+  })
+  const text = await res.text()
+  let data: { error?: string; error_description?: string; webViewLink?: string; id?: string }
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error('Resposta inválida da API de upload.')
+  }
+  if (!res.ok) {
+    const errMsg =
+      data.error ||
+      data.error_description ||
+      (res.status === 401
+        ? 'Token expirado. Reconecte o Google Drive.'
+        : res.status === 403
+          ? 'Sem permissão no Drive.'
+          : 'Falha ao enviar PPT final')
+    throw new Error(errMsg)
+  }
+  const id = data.id || ''
+  const webViewLink = data.webViewLink || (id ? `https://drive.google.com/file/d/${id}/view` : '')
+  if (!webViewLink) throw new Error('Resposta sem link do arquivo.')
+  return { webViewLink, id }
 }

@@ -9,7 +9,7 @@ function parseNum(v: unknown): number {
     // Aceita formatos como: "R$ 1.234,56", "1234.56", "- 2.345,00"
     const raw = String(v).trim()
     const cleaned = raw
-      .replace(/[^\d,.\-]/g, '')
+      .replace(/[^\d,.-]/g, '')
       .replace(/\.(?=.*[,])/g, '') // remove separador de milhar quando houver decimal com vírgula
       .replace(',', '.')
     const n = parseFloat(cleaned)
@@ -51,10 +51,10 @@ function extrairAnoDeData(v: unknown): string | null {
   const s = String(v).trim()
   if (!s) return null
   // DD/MM/YYYY ou DD-MM-YYYY
-  const m1 = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  const m1 = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
   if (m1) return m1[3]
   // YYYY-MM-DD
-  const m2 = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/)
+  const m2 = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
   if (m2) return m2[1]
   // Apenas ano (4 dígitos)
   const m3 = s.match(/\b(19|20)\d{2}\b/)
@@ -93,6 +93,13 @@ export interface MetricasCivel {
   valorPoloPassivo: number
 }
 
+export interface PedidoPorProcessoAgg {
+  processo: string
+  pedido: string
+  count: number
+  valor: number
+}
+
 export interface MetricasTrabalhista {
   potencialPassivo: number
   porFase: { label: string; value: number; valor: number }[]
@@ -106,6 +113,16 @@ export interface MetricasTrabalhista {
   porFaseAtivosSuspensos: { label: string; count: number; valor: number }[]
   /** Assuntos agregados (split por vírgula/linha, normalizados e contados) */
   assuntosAgregados: { label: string; value: number }[]
+  /** Pedidos individualizados por processo (tipo_pedido separado por vírgula etc.) */
+  pedidosPorProcesso: PedidoPorProcessoAgg[]
+  /** Ano com mais distribuições */
+  anoPicoDistribuicao: { label: string; value: number } | null
+  /** Frase automática para slide de linha do tempo */
+  textoResumoAno: string
+  /** Próximas audiências (colunas audiencia / data_audiencia / próxima_audiência) */
+  proximasAudiencias: { processo: string; data: string; texto: string }[]
+  /** Casos relevantes (flag ou coluna texto) */
+  casosRelevantes: { processo: string; texto: string }[]
 }
 
 export interface MetricasTributario {
@@ -182,6 +199,25 @@ export function calcularMetricasCivel(parsed: Record<string, unknown> | null): M
     if (poloCliente.includes('ativo') || poloCliente.includes('autora')) return acc + parseNum(r.valor_causa ?? r.valor ?? r.valor_da_causa)
     return acc
   }, 0)
+  const anoMap = new Map<string, number>()
+  for (const r of rows) {
+    const ano =
+      extrairAnoDeData(r.data_distribuicao ?? r.data_da_distribuicao) ?? (String(r.ano ?? '').trim() || null)
+    const label = ano ?? '—'
+    anoMap.set(label, (anoMap.get(label) ?? 0) + 1)
+  }
+  const porAnoFromData = Array.from(anoMap.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => {
+      const na = parseInt(a.label, 10)
+      const nb = parseInt(b.label, 10)
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na
+      if (!Number.isNaN(na)) return -1
+      if (!Number.isNaN(nb)) return 1
+      return a.label.localeCompare(b.label)
+    })
+  const porAno = porAnoFromData.length ? porAnoFromData : groupCount(rows, 'ano')
+
   return {
     totalProcessos: rows.length,
     porPosicao: groupCount(rows, 'posicao').length ? groupCount(rows, 'posicao') : groupCount(rows, 'polo_ativo'),
@@ -189,7 +225,7 @@ export function calcularMetricasCivel(parsed: Record<string, unknown> | null): M
     porSituacao: groupCount(rows, 'situacao').length ? groupCount(rows, 'situacao') : groupCount(rows, 'situacao_processual'),
     porRegiao: groupCount(rows, 'regiao').length ? groupCount(rows, 'regiao') : groupCount(rows, 'foro'),
     porTipo: groupCount(rows, 'tipo_acao').length ? groupCount(rows, 'tipo_acao') : groupCount(rows, 'classe_acao'),
-    porAno: groupCount(rows, 'ano'),
+    porAno,
     porFase: groupCount(rows, 'fase'),
     valorPoloAtivo: valorAtivo,
     valorPoloPassivo: valorPassivo,
@@ -280,6 +316,63 @@ export function calcularMetricasTrabalhista(parsed: Record<string, unknown> | nu
       return a.label.localeCompare(b.label)
     })
 
+  const pedidoProcessoMap = new Map<string, { count: number; valor: number }>()
+  for (const r of rows) {
+    const proc = String(r.numero_processo ?? r.processo ?? '').trim() || '—'
+    const raw = String(r.tipo_pedido ?? r.pedidos ?? '').trim()
+    const valor = parseNum(r.valor_envolvido ?? r.valor_causa ?? r.valor)
+    if (!raw) continue
+    const partes = raw.split(/[,\n;]+/).map((s) => s.trim()).filter(Boolean)
+    for (const pedido of partes) {
+      const key = `${proc}|||${pedido}`
+      const cur = pedidoProcessoMap.get(key) ?? { count: 0, valor: 0 }
+      cur.count += 1
+      cur.valor += valor
+      pedidoProcessoMap.set(key, cur)
+    }
+  }
+  const pedidosPorProcesso: PedidoPorProcessoAgg[] = Array.from(pedidoProcessoMap.entries())
+    .map(([key, { count, valor }]) => {
+      const [processo, pedido] = key.split('|||')
+      return { processo, pedido, count, valor }
+    })
+    .sort((a, b) => b.count - a.count)
+
+  const anoPicoDistribuicao =
+    porAno.filter((p) => p.label !== '—' && p.value > 0).sort((a, b) => b.value - a.value)[0] ?? null
+  const totalAno = porAno.reduce((s, p) => s + p.value, 0)
+  const textoResumoAno = anoPicoDistribuicao
+    ? `O pico de distribuição ocorreu em ${anoPicoDistribuicao.label}, com ${anoPicoDistribuicao.value} processo(s) (${totalAno ? Math.round((anoPicoDistribuicao.value / totalAno) * 100) : 0}% do total).`
+    : ''
+
+  const proximasAudiencias: { processo: string; data: string; texto: string }[] = []
+  for (const r of rows) {
+    const aud =
+      r.data_audiencia ??
+      r.proxima_audiencia ??
+      r.data_proxima_audiencia ??
+      r.audiencia
+    const dt = aud != null && aud !== '' ? String(aud) : ''
+    if (!dt) continue
+    proximasAudiencias.push({
+      processo: String(r.numero_processo ?? r.processo ?? '—'),
+      data: dt,
+      texto: `${String(r.numero_processo ?? '')}: ${dt}`,
+    })
+  }
+
+  const casosRelevantes: { processo: string; texto: string }[] = []
+  for (const r of rows) {
+    const flag = String(r.caso_relevante ?? r.relevante ?? '').toLowerCase()
+    const txt = String(r.observacao_caso ?? r.resumo_caso ?? '').trim()
+    if (flag === 'sim' || flag === 's' || flag === 'true' || txt) {
+      casosRelevantes.push({
+        processo: String(r.numero_processo ?? r.processo ?? '—'),
+        texto: txt || String(r.assuntos ?? 'Caso relevante'),
+      })
+    }
+  }
+
   return {
     potencialPassivo: totalValor,
     porFase,
@@ -290,6 +383,11 @@ export function calcularMetricasTrabalhista(parsed: Record<string, unknown> | nu
     ativosVsArquivados,
     porFaseAtivosSuspensos,
     assuntosAgregados,
+    pedidosPorProcesso,
+    anoPicoDistribuicao,
+    textoResumoAno,
+    proximasAudiencias,
+    casosRelevantes,
   }
 }
 

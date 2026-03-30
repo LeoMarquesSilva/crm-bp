@@ -1,9 +1,55 @@
 /**
  * API – Envia um arquivo para o Google Drive usando o access_token do usuário.
- * POST body (JSON): { access_token, file_name, file_base64 } ou (multipart): file + access_token.
+ * POST body (JSON): { access_token, file_name, file_base64, mime_type?, due_diligence_folder?, due_diligence_razao_social? }
+ * Se due_diligence_folder=true: cria/usa "Due Diligence" / {razao_social} e envia o arquivo lá.
  * Resposta: { webViewLink, id } do arquivo criado no Drive.
  */
-const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
+const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink'
+const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files'
+
+function sanitizeFolderName(name) {
+  if (!name || typeof name !== 'string') return 'Cliente'
+  return name.replace(/[\\/:*?"<>|]/g, ' ').trim().slice(0, 120) || 'Cliente'
+}
+
+async function findFolderByName(accessToken, folderName, parentId) {
+  const escaped = folderName.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  const parentClause = parentId ? `'${parentId}' in parents` : `'root' in parents`
+  const q = `mimeType='application/vnd.google-apps.folder' and name='${escaped}' and ${parentClause} and trashed=false`
+  const url = `${DRIVE_FILES}?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.error?.message || 'Falha ao listar pastas no Drive')
+  return data.files?.[0]?.id || null
+}
+
+async function createFolder(accessToken, folderName, parentId) {
+  const body = {
+    name: folderName,
+    mimeType: 'application/vnd.google-apps.folder',
+    ...(parentId ? { parents: [parentId] } : {}),
+  }
+  const r = await fetch(`${DRIVE_FILES}?fields=id`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.error?.message || 'Falha ao criar pasta no Drive')
+  return data.id
+}
+
+async function findOrCreateFolder(accessToken, folderName, parentId) {
+  const existing = await findFolderByName(accessToken, folderName, parentId)
+  if (existing) return existing
+  return createFolder(accessToken, folderName, parentId)
+}
+
+async function resolveDueDiligenceParentId(accessToken, razaoSocial) {
+  const rootDue = await findOrCreateFolder(accessToken, 'Due Diligence', null)
+  const sub = sanitizeFolderName(razaoSocial)
+  return findOrCreateFolder(accessToken, sub, rootDue)
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,6 +62,8 @@ export default async function handler(req, res) {
   let mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
   const contentType = (req.headers['content-type'] || '').toLowerCase()
+  let parentFolderId = null
+
   if (contentType.includes('application/json')) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
     accessToken = body.access_token
@@ -30,16 +78,26 @@ export default async function handler(req, res) {
     } catch {
       return res.status(400).json({ error: 'file_base64 inválido' })
     }
+    if (body.due_diligence_folder === true && body.due_diligence_razao_social) {
+      try {
+        parentFolderId = await resolveDueDiligenceParentId(accessToken, String(body.due_diligence_razao_social))
+      } catch (e) {
+        console.error('Due Diligence folder error:', e)
+        return res.status(500).json({ error: e.message || 'Falha ao criar pasta Due Diligence' })
+      }
+    }
   } else {
     return res.status(400).json({ error: 'Content-Type deve ser application/json com access_token, file_name e file_base64' })
   }
 
   const boundary = '-------drive_upload_' + Date.now()
+  const fileMeta = { name: fileName, mimeType }
+  if (parentFolderId) fileMeta.parents = [parentFolderId]
   const metaPart = [
     `--${boundary}`,
     'Content-Type: application/json; charset=UTF-8',
     '',
-    JSON.stringify({ name: fileName, mimeType }),
+    JSON.stringify(fileMeta),
     '',
   ].join('\r\n')
   const filePart = [

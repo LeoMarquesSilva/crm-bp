@@ -10,7 +10,6 @@ import {
   Upload,
   FileSpreadsheet,
   CheckCircle2,
-  Circle,
   Loader2,
   AlertCircle,
   X,
@@ -21,6 +20,8 @@ import {
   Settings2,
   Search,
   CheckCircle,
+  ChevronUp,
+  ChevronDown,
   Scale,
   Briefcase,
   Landmark,
@@ -37,19 +38,31 @@ import {
   getAreasForLead,
   setAreaStatus,
   uploadDueDiligenceFile,
+  updateAreaPresentationFields,
+  uploadDueDiligenceFinalPptx,
+  updateDueDiligenceLeadFinalPpt,
+  updateLeadPptChartOptions,
 } from '@/lib/due-diligence/api'
+import { PostUploadTableModal, type PostUploadDraft } from '@/components/due-diligence/PostUploadTableModal'
+import { AreaChartsPrefsModal, AreaProcessDetailModal } from '@/components/due-diligence/AreaPresentationModals'
 import { parseExcelFile, validateParsedRows, extractHeadersFromExcel, suggestColumnMapping } from '@/lib/due-diligence/parseExcel'
+import { readStructuralChartDefaults } from '@/lib/due-diligence/structuralChartDefaultsStorage'
 import {
   buildDueDiligencePptx,
   DEFAULT_CHART_OPTIONS,
+  normalizePptxChartOptions,
+  PPTX_SLIDE_BLOCK_IDS,
+  PPTX_SLIDE_BLOCK_LABELS,
   type PptxChartOptions,
 } from '@/lib/due-diligence/buildPptx'
 import { calcularTodasMetricas, calcularMetricasConsolidadas } from '@/lib/due-diligence/metrics'
+import { buildAreaChartPreviewSlides } from '@/lib/due-diligence/areaChartPreviews'
 import {
   DUE_DILIGENCE_AREAS,
   type DueDiligenceLead as DDLead,
   type DueDiligenceAreaRow,
   type DueDiligenceAreaId,
+  type AreaChartOptionsPartial,
 } from '@/lib/due-diligence/types'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -82,7 +95,9 @@ function saveDriveToken(accessToken: string, expiresInSeconds: number) {
     const expiresAt = Date.now() + expiresInSeconds * 1000
     localStorage.setItem(DRIVE_TOKEN_KEY, accessToken)
     localStorage.setItem(DRIVE_EXPIRES_KEY, String(expiresAt))
-  } catch {}
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 /** Normaliza CNPJ removendo não-dígitos */
@@ -96,6 +111,20 @@ function isValidCnpjFormat(cnpj: string | null | undefined): boolean {
   const n = normalizeCnpj(cnpj)
   if (!n) return true
   return n.length === 14 && /^\d{14}$/.test(n)
+}
+
+function areaReadyForPpt(a: DueDiligenceAreaRow): boolean {
+  return a.status === 'done' || a.status === 'no_processes' || a.skipped_presentation === true
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunk = 8192
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
 }
 
 /** Formata valor em reais */
@@ -127,25 +156,22 @@ export function DueDiligence() {
   const [deleting, setDeleting] = useState(false)
   const [areaToRemove, setAreaToRemove] = useState<{ areaRow: DueDiligenceAreaRow; label: string } | null>(null)
   const [removingArea, setRemovingArea] = useState(false)
-  const [chartConfigModal, setChartConfigModal] = useState(false)
+  const [ddWorkspaceTab, setDdWorkspaceTab] = useState<'areas' | 'ppt'>('areas')
+  const [pptDeckSaving, setPptDeckSaving] = useState(false)
   const CHART_OPTIONS_KEY = 'crm-bp-ppt-chart-options'
-  const [chartOptions, setChartOptions] = useState<PptxChartOptions>(() => {
-    try {
-      const s = localStorage.getItem(CHART_OPTIONS_KEY)
-      if (s) {
-        const parsed = JSON.parse(s) as Partial<PptxChartOptions>
-        return { ...DEFAULT_CHART_OPTIONS, ...parsed }
-      }
-    } catch {}
-    return { ...DEFAULT_CHART_OPTIONS }
-  })
+  const [chartOptions, setChartOptions] = useState<PptxChartOptions>(() => normalizePptxChartOptions())
 
   useEffect(() => {
     try {
       localStorage.setItem(CHART_OPTIONS_KEY, JSON.stringify(chartOptions))
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [chartOptions])
   const [uploadingArea, setUploadingArea] = useState<DueDiligenceAreaId | null>(null)
+  const [postUploadDraft, setPostUploadDraft] = useState<PostUploadDraft | null>(null)
+  const [areaChartsFor, setAreaChartsFor] = useState<DueDiligenceAreaRow | null>(null)
+  const [areaDetailFor, setAreaDetailFor] = useState<DueDiligenceAreaRow | null>(null)
   const [generating, setGenerating] = useState(false)
   const [creatingTest, setCreatingTest] = useState(false)
   const [driveAccessToken, setDriveAccessToken] = useState<string | null>(() => getStoredDriveToken())
@@ -177,6 +203,7 @@ export function DueDiligence() {
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apenas id importa para checar se lead ainda existe
   }, [selectedLead?.id])
 
   useEffect(() => {
@@ -222,7 +249,8 @@ export function DueDiligence() {
       await tryRefreshDriveToken()
     }
     run()
-  }, [supabase, tryRefreshDriveToken])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cliente supabase é estável
+  }, [tryRefreshDriveToken])
 
   const loginDrive = useGoogleLogin({
     flow: 'auth-code',
@@ -290,7 +318,53 @@ export function DueDiligence() {
     } else {
       setAreas([])
     }
-  }, [selectedLead?.id, loadAreas])
+  }, [selectedLead, loadAreas])
+
+  const leadPptOptsSerialized = useMemo(() => {
+    if (!selectedLead) return ''
+    return JSON.stringify(selectedLead.ppt_chart_options ?? null)
+  }, [selectedLead?.id, selectedLead?.ppt_chart_options])
+
+  useEffect(() => {
+    setDdWorkspaceTab('areas')
+  }, [selectedLead?.id])
+
+  /** Hidrata opções globais do deck: banco (por lead) → localStorage → padrão */
+  useEffect(() => {
+    if (!selectedLead) return
+    const raw = selectedLead.ppt_chart_options
+    if (raw != null && typeof raw === 'object' && Object.keys(raw as object).length > 0) {
+      setChartOptions(normalizePptxChartOptions(raw as Partial<PptxChartOptions>))
+      return
+    }
+    try {
+      const s = localStorage.getItem(CHART_OPTIONS_KEY)
+      if (s) {
+        setChartOptions(normalizePptxChartOptions(JSON.parse(s) as Partial<PptxChartOptions>))
+        return
+      }
+    } catch {
+      /* ignore */
+    }
+    setChartOptions(normalizePptxChartOptions())
+  }, [selectedLead?.id, leadPptOptsSerialized])
+
+  const savePptDeckToLead = async () => {
+    if (!selectedLead || !supabase) return
+    setPptDeckSaving(true)
+    setError(null)
+    try {
+      const payload = JSON.parse(JSON.stringify(chartOptions)) as Record<string, unknown>
+      const updated = await updateLeadPptChartOptions(selectedLead.id, payload)
+      setSelectedLead(updated)
+      setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+      setSuccess('Configuração global do PowerPoint salva neste lead.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao salvar configuração do PowerPoint.')
+    } finally {
+      setPptDeckSaving(false)
+    }
+  }
 
   const handleAddLead = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -419,8 +493,10 @@ export function DueDiligence() {
   const handleSetNoProcesses = async (areaRow: DueDiligenceAreaRow) => {
     if (!supabase) return
     try {
-      await setAreaStatus(areaRow.id, 'no_processes')
-      setAreas((prev) => prev.map((a) => (a.id === areaRow.id ? { ...a, status: 'no_processes' as const } : a)))
+      await setAreaStatus(areaRow.id, 'no_processes', { skipped_presentation: false })
+      setAreas((prev) =>
+        prev.map((a) => (a.id === areaRow.id ? { ...a, status: 'no_processes' as const, skipped_presentation: false } : a))
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao atualizar área.')
     }
@@ -433,16 +509,35 @@ export function DueDiligence() {
         file_name: null,
         file_url: null,
         parsed_data: null,
+        skipped_presentation: false,
       })
       setAreas((prev) =>
         prev.map((a) =>
           a.id === areaRow.id
-            ? { ...a, status: 'pending' as const, file_name: null, file_url: null, parsed_data: null }
+            ? {
+                ...a,
+                status: 'pending' as const,
+                file_name: null,
+                file_url: null,
+                parsed_data: null,
+                skipped_presentation: false,
+              }
             : a
         )
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao desmarcar área.')
+    }
+  }
+
+  const handleToggleSkipPresentation = async (areaRow: DueDiligenceAreaRow) => {
+    if (!supabase) return
+    const next = !areaRow.skipped_presentation
+    try {
+      await updateAreaPresentationFields(areaRow.id, { skipped_presentation: next })
+      setAreas((prev) => prev.map((a) => (a.id === areaRow.id ? { ...a, skipped_presentation: next } : a)))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao atualizar área.')
     }
   }
 
@@ -455,11 +550,19 @@ export function DueDiligence() {
         file_name: null,
         file_url: null,
         parsed_data: null,
+        skipped_presentation: false,
       })
       setAreas((prev) =>
         prev.map((a) =>
           a.id === areaToRemove.areaRow.id
-            ? { ...a, status: 'pending' as const, file_name: null, file_url: null, parsed_data: null }
+            ? {
+                ...a,
+                status: 'pending' as const,
+                file_name: null,
+                file_url: null,
+                parsed_data: null,
+                skipped_presentation: false,
+              }
             : a
         )
       )
@@ -524,18 +627,13 @@ export function DueDiligence() {
         }
       }
       const parsedData = { rows: result.data.rows, columnMapping: result.data.columnMapping }
-      await setAreaStatus(areaRow.id, 'done', {
-        file_name: file.name,
-        file_url: fileUrl,
-        parsed_data: parsedData as Record<string, unknown>,
+      setPostUploadDraft({
+        areaRowId: areaRow.id,
+        areaId,
+        fileName: file.name,
+        fileUrl,
+        parsedData: parsedData as { rows: Record<string, unknown>[]; columnMapping: Record<string, string> },
       })
-      setAreas((prev) =>
-        prev.map((a) =>
-          a.id === areaRow.id
-            ? { ...a, status: 'done' as const, file_name: file.name, file_url: fileUrl, parsed_data: parsedData as Record<string, unknown> }
-            : a
-        )
-      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro no upload ou parse.')
     } finally {
@@ -543,8 +641,39 @@ export function DueDiligence() {
     }
   }
 
-  const allAreasComplete = areas.length === DUE_DILIGENCE_AREAS.length && areas.every((a) => a.status === 'done' || a.status === 'no_processes')
-  const areasCompleteCount = areas.filter((a) => a.status === 'done' || a.status === 'no_processes').length
+  const allAreasComplete = areas.length === DUE_DILIGENCE_AREAS.length && areas.every(areaReadyForPpt)
+  const areasCompleteCount = areas.filter(areaReadyForPpt).length
+
+  const confirmPostUploadRows = async (rows: Record<string, unknown>[]) => {
+    if (!postUploadDraft || !supabase) return
+    const areaRow = areas.find((a) => a.id === postUploadDraft.areaRowId)
+    if (!areaRow) return
+    const parsedData = {
+      rows,
+      columnMapping: postUploadDraft.parsedData.columnMapping,
+    }
+    await setAreaStatus(areaRow.id, 'done', {
+      file_name: postUploadDraft.fileName,
+      file_url: postUploadDraft.fileUrl,
+      parsed_data: parsedData as Record<string, unknown>,
+      skipped_presentation: false,
+    })
+    setAreas((prev) =>
+      prev.map((a) =>
+        a.id === areaRow.id
+          ? {
+              ...a,
+              status: 'done' as const,
+              file_name: postUploadDraft.fileName,
+              file_url: postUploadDraft.fileUrl,
+              parsed_data: parsedData as Record<string, unknown>,
+              skipped_presentation: false,
+            }
+          : a
+      )
+    )
+    setPostUploadDraft(null)
+  }
 
   const filteredLeads = useMemo(() => {
     if (!leadSearch.trim()) return leads
@@ -561,12 +690,38 @@ export function DueDiligence() {
     if (!allAreasComplete || !selectedLead) return null
     const areasMap = new Map<DueDiligenceAreaId, Record<string, unknown> | null>()
     for (const a of areas) {
-      areasMap.set(a.area, a.parsed_data ?? null)
+      if (a.skipped_presentation) areasMap.set(a.area, null)
+      else areasMap.set(a.area, a.parsed_data ?? null)
     }
     const todas = calcularTodasMetricas(areasMap)
     const consolidada = calcularMetricasConsolidadas(areasMap)
     return { ...todas, consolidada }
   }, [allAreasComplete, selectedLead, areas])
+
+  const areaChartPreviewSlides = useMemo(() => {
+    if (!areaChartsFor) return []
+    const amap = new Map<DueDiligenceAreaId, Record<string, unknown> | null>()
+    for (const a of areas) {
+      if (a.skipped_presentation) amap.set(a.area, null)
+      else amap.set(a.area, a.parsed_data ?? null)
+    }
+    const todas = calcularTodasMetricas(amap)
+    return buildAreaChartPreviewSlides(areaChartsFor.area, todas, areaChartsFor)
+  }, [areaChartsFor, areas])
+
+  const processOptionsForDetail = useMemo(() => {
+    if (!areaDetailFor?.parsed_data?.rows) return [] as { value: string; label: string }[]
+    const rows = areaDetailFor.parsed_data.rows as Record<string, unknown>[]
+    const seen = new Set<string>()
+    const out: { value: string; label: string }[] = []
+    for (const r of rows) {
+      const n = String(r.numero_processo ?? r.processo ?? '').trim()
+      if (!n || seen.has(n)) continue
+      seen.add(n)
+      out.push({ value: n, label: n })
+    }
+    return out
+  }, [areaDetailFor])
 
   const handleGeneratePptx = useCallback(async () => {
     if (!selectedLead || !allAreasComplete) return
@@ -577,19 +732,56 @@ export function DueDiligence() {
     try {
       const areasMap = new Map<DueDiligenceAreaId, Record<string, unknown> | null>()
       for (const a of areas) {
-        areasMap.set(a.area, a.parsed_data ?? null)
+        if (a.skipped_presentation) areasMap.set(a.area, null)
+        else areasMap.set(a.area, a.parsed_data ?? null)
       }
       const metricas = calcularTodasMetricas(areasMap)
-      await buildDueDiligencePptx(selectedLead, areas, metricas, chartOptions)
-      const fileName = `Due-Diligence-${selectedLead.razao_social.replace(/[^\w\s-]/g, '').slice(0, 50) || 'Due-Diligence'}.pptx`
-      setSuccess(`PowerPoint gerado com sucesso! O arquivo "${fileName}" foi baixado.`)
-      setTimeout(() => setSuccess(null), 6000)
+      const { buffer, fileName } = await buildDueDiligencePptx(selectedLead, areas, metricas, chartOptions, {
+        download: false,
+        structuralChartDefaults: readStructuralChartDefaults(),
+      })
+      if (typeof document !== 'undefined') {
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+      let driveMsg = ''
+      const token = driveAccessToken || getStoredDriveToken()
+      if (token) {
+        try {
+          const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
+          const safe = `${ts}_${fileName.replace(/\.pptx$/i, '')}.pptx`
+          const b64 = arrayBufferToBase64(buffer)
+          const { webViewLink, id } = await uploadDueDiligenceFinalPptx(selectedLead.id, selectedLead.razao_social, b64, safe, token)
+          const updated = await updateDueDiligenceLeadFinalPpt(selectedLead.id, {
+            final_ppt_url: webViewLink,
+            final_ppt_file_id: id,
+          })
+          setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+          setSelectedLead((prev) => (prev?.id === updated.id ? updated : prev))
+          driveMsg = ` PPT final salvo no Google Drive (pasta Due Diligence).`
+        } catch (driveErr) {
+          setWarning(
+            driveErr instanceof Error
+              ? `${driveErr.message} O arquivo foi baixado localmente.`
+              : 'Não foi possível enviar o PPT ao Drive; arquivo baixado localmente.'
+          )
+        }
+      } else {
+        setWarning('Google Drive não conectado: o PPT foi apenas baixado. Conecte o Drive para gravar na pasta Due Diligence.')
+      }
+      setSuccess(`PowerPoint gerado! "${fileName}" baixado.${driveMsg}`)
+      setTimeout(() => setSuccess(null), 8000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao gerar PowerPoint.')
     } finally {
       setGenerating(false)
     }
-  }, [selectedLead, areas, allAreasComplete, chartOptions])
+  }, [selectedLead, areas, allAreasComplete, chartOptions, driveAccessToken])
 
   if (loading) {
     return (
@@ -608,7 +800,7 @@ export function DueDiligence() {
             Due Diligence
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Inclua leads, envie as planilhas por área ou marque &quot;não há processos&quot;. Os arquivos são salvos no Google Drive. Quando as 4 áreas estiverem concluídas, gere o PowerPoint.
+            Inclua leads, envie as planilhas por área, marque &quot;não há processos&quot; ou &quot;pular na apresentação&quot;. Os arquivos vão ao Google Drive. Quando todas as áreas estiverem concluídas (ou sem dados/pular), gere o PowerPoint — o arquivo final também pode ser salvo na pasta Due Diligence no Drive.
           </p>
           {selectedLead && (
             <div className="mt-3 flex items-center gap-2">
@@ -780,6 +972,16 @@ export function DueDiligence() {
                 <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wider">
                   Áreas – {selectedLead.razao_social}
                 </h2>
+                {selectedLead.final_ppt_url && (
+                  <a
+                    href={selectedLead.final_ppt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Abrir último PPT final no Drive
+                  </a>
+                )}
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium text-gray-600">
                     {areasCompleteCount}/{DUE_DILIGENCE_AREAS.length} concluídas
@@ -794,12 +996,44 @@ export function DueDiligence() {
                   </div>
                 </div>
               </div>
+
+              <div className="flex flex-wrap gap-2 p-1 bg-gray-100 rounded-xl border border-gray-200/80">
+                <button
+                  type="button"
+                  onClick={() => setDdWorkspaceTab('areas')}
+                  className={cn(
+                    'flex-1 sm:flex-none min-w-[10rem] px-4 py-2 rounded-lg text-sm font-medium transition',
+                    ddWorkspaceTab === 'areas'
+                      ? 'bg-white text-primary shadow-sm border border-primary/20'
+                      : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  Áreas e planilhas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDdWorkspaceTab('ppt')}
+                  className={cn(
+                    'flex-1 sm:flex-none min-w-[10rem] px-4 py-2 rounded-lg text-sm font-medium transition inline-flex items-center justify-center gap-2',
+                    ddWorkspaceTab === 'ppt'
+                      ? 'bg-white text-primary shadow-sm border border-primary/20'
+                      : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Configuração do PowerPoint
+                </button>
+              </div>
+
+              {ddWorkspaceTab === 'areas' && (
+                <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {DUE_DILIGENCE_AREAS.map(({ id, label }, idx) => {
                   const areaRow = areas.find((a) => a.area === id)
                   const isUploading = uploadingArea === id
                   const isDone = areaRow?.status === 'done'
                   const isNoProcesses = areaRow?.status === 'no_processes'
+                  const isSkippedDeck = areaRow?.skipped_presentation === true
                   const isPending = !areaRow || areaRow.status === 'pending'
                   const AreaIcon = AREA_ICONS[id] ?? Scale
                   return (
@@ -812,6 +1046,7 @@ export function DueDiligence() {
                         'border-2 rounded-xl p-4 transition-all duration-200 shadow-sm',
                         isDone && 'border-emerald-300 bg-emerald-50/80',
                         isNoProcesses && 'border-sky-300 bg-sky-50/80',
+                        isSkippedDeck && !isDone && !isNoProcesses && 'border-violet-300 bg-violet-50/80',
                         isPending && 'border-gray-200 bg-white hover:border-primary/20 hover:shadow-md'
                       )}
                     >
@@ -821,6 +1056,7 @@ export function DueDiligence() {
                             'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
                             isDone && 'bg-emerald-100 text-emerald-600',
                             isNoProcesses && 'bg-sky-100 text-sky-600',
+                            isSkippedDeck && !isDone && !isNoProcesses && 'bg-violet-100 text-violet-700',
                             isPending && 'bg-gray-100 text-gray-500'
                           )}
                         >
@@ -892,6 +1128,22 @@ export function DueDiligence() {
                                   <Trash2 className="h-4 w-4" />
                                   Remover
                                 </button>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setAreaChartsFor(areaRow)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-primary/30 text-primary hover:bg-primary/5"
+                                  >
+                                    Gráficos da área
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setAreaDetailFor(areaRow)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                                  >
+                                    Detalhar processos
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ) : (
@@ -904,6 +1156,15 @@ export function DueDiligence() {
                                   className="rounded border-gray-300"
                                 />
                                 Não há processos nesta área
+                              </label>
+                              <label className="flex items-center gap-2 text-sm cursor-pointer text-violet-800">
+                                <input
+                                  type="checkbox"
+                                  checked={isSkippedDeck}
+                                  onChange={() => handleToggleSkipPresentation(areaRow)}
+                                  className="rounded border-gray-300"
+                                />
+                                Pular esta área na apresentação (sem planilha)
                               </label>
                               <div className="relative group">
                                 <input
@@ -1002,6 +1263,7 @@ export function DueDiligence() {
                         {DUE_DILIGENCE_AREAS.map(({ id, label }, idx) => {
                           const areaRow = areas.find((a) => a.area === id)
                           const isNoProcesses = areaRow?.status === 'no_processes'
+                          const isSkippedDeck = areaRow?.skipped_presentation === true
                           const count = previewMetricas.consolidada.processosPorArea.find((p) => p.area === label)?.count ?? 0
                           const AreaIcon = AREA_ICONS[id] ?? Scale
                           return (
@@ -1012,14 +1274,14 @@ export function DueDiligence() {
                               transition={{ delay: 0.1 + idx * 0.05 }}
                               className={cn(
                                 'rounded-xl border-2 p-4 shadow-sm transition-colors',
-                                isNoProcesses ? 'bg-sky-50/80 border-sky-200' : 'bg-white border-gray-200 hover:border-primary/20'
+                                isNoProcesses ? 'bg-sky-50/80 border-sky-200' : isSkippedDeck ? 'bg-violet-50/80 border-violet-200' : 'bg-white border-gray-200 hover:border-primary/20'
                               )}
                             >
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <div className={cn(
                                     'flex h-8 w-8 items-center justify-center rounded-lg',
-                                    isNoProcesses ? 'bg-sky-100 text-sky-600' : 'bg-primary/10 text-primary'
+                                    isNoProcesses ? 'bg-sky-100 text-sky-600' : isSkippedDeck ? 'bg-violet-100 text-violet-700' : 'bg-primary/10 text-primary'
                                   )}>
                                     <AreaIcon className="h-4 w-4" />
                                   </div>
@@ -1027,11 +1289,13 @@ export function DueDiligence() {
                                 </div>
                                 {isNoProcesses ? (
                                   <span className="text-xs text-sky-600 font-medium px-2 py-0.5 rounded-full bg-sky-100">Sem processos</span>
+                                ) : isSkippedDeck ? (
+                                  <span className="text-xs text-violet-700 font-medium px-2 py-0.5 rounded-full bg-violet-100">Fora do deck</span>
                                 ) : (
                                   <span className="text-sm font-bold text-primary">{count} processos</span>
                                 )}
                               </div>
-                              {!isNoProcesses && (
+                              {!isNoProcesses && !isSkippedDeck && (
                                 <div className="space-y-1 text-xs text-gray-600">
                                   {id === 'civel' && previewMetricas.civel && (previewMetricas.civel.valorPoloAtivo > 0 || previewMetricas.civel.valorPoloPassivo > 0) && (
                                     <>
@@ -1134,15 +1398,173 @@ export function DueDiligence() {
                   </div>
                 </motion.div>
               )}
+                </>
+              )}
+
+              {ddWorkspaceTab === 'ppt' && (
+                <div className="rounded-2xl border-2 border-gray-200 bg-white p-5 space-y-5 shadow-sm">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">PowerPoint: ordem e conteúdo global</h3>
+                    <p className="text-xs text-gray-500 mt-1">Válido para a geração do deck deste lead (após capa e slides modelo). Salve para guardar no servidor.</p>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Marque quais blocos entram no deck e defina a ordem. Isto é complementar aos ajustes por área (botão &quot;Gráficos da área&quot; em cada card).
+                  </p>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1 border border-gray-100 rounded-lg p-3 bg-gray-50/50">
+                    {PPTX_SLIDE_BLOCK_IDS.map((id) => (
+                      <label key={id} className="flex items-center gap-2 cursor-pointer py-1">
+                        <input
+                          type="checkbox"
+                          checked={chartOptions[id]}
+                          onChange={(e) => setChartOptions((o) => ({ ...o, [id]: e.target.checked }))}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm text-gray-800">{PPTX_SLIDE_BLOCK_LABELS[id]}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-1">Ordem no PowerPoint</h4>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Use as setas para mover o bloco. A posição dentro de cada slide (esquerda/direita do gráfico) continua fixa no template.
+                    </p>
+                    <ul className="space-y-1.5 rounded-lg border border-gray-200 p-2 bg-white">
+                      {chartOptions.slideOrder.map((id, index) => (
+                        <li
+                          key={id}
+                          className="flex items-center gap-2 rounded-md border border-gray-100 bg-gray-50/80 px-2 py-1.5"
+                        >
+                          <span className="text-xs text-gray-400 w-5 tabular-nums">{index + 1}.</span>
+                          <span className="flex-1 text-sm text-gray-800">{PPTX_SLIDE_BLOCK_LABELS[id]}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() =>
+                                setChartOptions((o) => {
+                                  if (index <= 0) return o
+                                  const slideOrder = [...o.slideOrder]
+                                  ;[slideOrder[index - 1], slideOrder[index]] = [slideOrder[index], slideOrder[index - 1]]
+                                  return { ...o, slideOrder }
+                                })
+                              }
+                              className="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Subir"
+                              aria-label="Mover para cima"
+                            >
+                              <ChevronUp className="h-4 w-4 text-gray-600" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index >= chartOptions.slideOrder.length - 1}
+                              onClick={() =>
+                                setChartOptions((o) => {
+                                  if (index >= o.slideOrder.length - 1) return o
+                                  const slideOrder = [...o.slideOrder]
+                                  ;[slideOrder[index], slideOrder[index + 1]] = [slideOrder[index + 1], slideOrder[index]]
+                                  return { ...o, slideOrder }
+                                })
+                              }
+                              className="p-0.5 rounded hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Descer"
+                              aria-label="Mover para baixo"
+                            >
+                              <ChevronDown className="h-4 w-4 text-gray-600" />
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="pt-4 border-t border-gray-200 space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800">Posição e tamanho dos gráficos</h4>
+                    <p className="text-xs text-gray-500">
+                      Válido para gráficos em largura total (CNPJ, ano, passivo) e pizza; nos slides com texto + gráfico (áreas), também troca o lado do gráfico.
+                    </p>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 block mb-1">Alinhamento (slide único gráfico)</label>
+                      <div className="flex flex-wrap gap-2">
+                        {(['left', 'center', 'right'] as const).map((a) => (
+                          <button
+                            key={a}
+                            type="button"
+                            onClick={() => setChartOptions((o) => ({ ...o, chartAlign: a }))}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                              chartOptions.chartAlign === a ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            )}
+                          >
+                            {a === 'left' ? 'Esquerda' : a === 'center' ? 'Centro' : 'Direita'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 block mb-1">Tamanho do gráfico</label>
+                      <div className="flex flex-wrap gap-2">
+                        {(
+                          [
+                            ['compact', 'Compacto'],
+                            ['normal', 'Normal'],
+                            ['large', 'Grande'],
+                          ] as const
+                        ).map(([bid, label]) => (
+                          <button
+                            key={bid}
+                            type="button"
+                            onClick={() => setChartOptions((o) => ({ ...o, chartSize: bid }))}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                              chartOptions.chartSize === bid ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        checked={chartOptions.areaTextLeftChartRight}
+                        onChange={(e) => setChartOptions((o) => ({ ...o, areaTextLeftChartRight: e.target.checked }))}
+                        className="rounded border-gray-300"
+                      />
+                      <span>Texto à esquerda, gráfico à direita (slides em duas colunas)</span>
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setChartOptions(normalizePptxChartOptions({ ...chartOptions, slideOrder: [...DEFAULT_CHART_OPTIONS.slideOrder] }))}
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50"
+                    >
+                      Restaurar ordem padrão
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pptDeckSaving || !supabase}
+                      onClick={() => void savePptDeckToLead()}
+                      className={cn(
+                        'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90',
+                        (pptDeckSaving || !supabase) && 'opacity-60 cursor-not-allowed'
+                      )}
+                    >
+                      {pptDeckSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Salvar configuração no lead
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 border-t border-gray-200 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setChartConfigModal(true)}
+                  onClick={() => setDdWorkspaceTab('ppt')}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
                 >
                   <Settings2 className="h-5 w-5" />
-                  Gráficos a exibir
+                  Abrir config. global do PPT
                 </button>
                 <button
                   type="button"
@@ -1164,7 +1586,7 @@ export function DueDiligence() {
                 </button>
                 {areas.length === DUE_DILIGENCE_AREAS.length && !allAreasComplete && (
                   <p className="text-xs text-amber-600 mt-2">
-                    Conclua todas as {DUE_DILIGENCE_AREAS.length} áreas (envie planilha ou marque &quot;não há processos&quot;) para habilitar.
+                    Conclua todas as {DUE_DILIGENCE_AREAS.length} áreas (planilha, &quot;não há processos&quot; ou &quot;pular na apresentação&quot;).
                   </p>
                 )}
               </div>
@@ -1173,122 +1595,40 @@ export function DueDiligence() {
         </div>
       </div>
 
-      {/* Modal Configuração de gráficos */}
-      {chartConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 my-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Gráficos e slides a exibir</h3>
-              <button type="button" onClick={() => setChartConfigModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Marque os itens que deseja incluir no PowerPoint gerado.
-            </p>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.processosPorCnpj}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, processosPorCnpj: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Processos por CNPJ (gráfico)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.passivoGeralPorCnpj}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, passivoGeralPorCnpj: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Passivo geral por CNPJ</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.processosPorAno}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, processosPorAno: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Processos por ano (gráfico)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.passivoTotalPorArea}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, passivoTotalPorArea: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Passivo total por área (gráfico)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.resumoExecutivo}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, resumoExecutivo: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Resumo Executivo</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.slideCivel}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, slideCivel: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Slide Cível (com gráfico por fase)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.slideTrabalhista}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, slideTrabalhista: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Slide Trabalhista (com gráfico por fase)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.slideTributario}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, slideTributario: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Slide Tributário</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.slideRecuperacao}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, slideRecuperacao: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Slide Recuperação de Créditos (com gráfico)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chartOptions.slideReestruturacao}
-                  onChange={(e) => setChartOptions((o) => ({ ...o, slideReestruturacao: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                <span>Slide Reestruturação (com gráfico)</span>
-              </label>
-            </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={() => setChartConfigModal(false)}
-                className="w-full px-4 py-2 rounded-lg bg-primary text-white font-medium hover:opacity-90"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
+      {postUploadDraft && (
+        <PostUploadTableModal
+          draft={postUploadDraft}
+          onClose={() => setPostUploadDraft(null)}
+          onConfirm={confirmPostUploadRows}
+        />
+      )}
+      {areaChartsFor && (
+        <AreaChartsPrefsModal
+          areaRow={areaChartsFor}
+          areaLabel={DUE_DILIGENCE_AREAS.find((a) => a.id === areaChartsFor.area)?.label ?? areaChartsFor.area}
+          previewSlides={areaChartPreviewSlides}
+          onClose={() => setAreaChartsFor(null)}
+          onSave={async (opts: AreaChartOptionsPartial) => {
+            const updated = await updateAreaPresentationFields(areaChartsFor.id, { area_chart_options: opts })
+            setAreas((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+            if (selectedLead) await loadAreas(selectedLead.id)
+          }}
+        />
+      )}
+      {areaDetailFor && (
+        <AreaProcessDetailModal
+          areaRow={areaDetailFor}
+          areaLabel={DUE_DILIGENCE_AREAS.find((a) => a.id === areaDetailFor.area)?.label ?? areaDetailFor.area}
+          processOptions={processOptionsForDetail}
+          onClose={() => setAreaDetailFor(null)}
+          onSave={async (config, manualRows) => {
+            const updated = await updateAreaPresentationFields(areaDetailFor.id, {
+              area_detail_config: config,
+              manual_process_slides: manualRows,
+            })
+            setAreas((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+          }}
+        />
       )}
 
       {/* Modal Incluir lead */}

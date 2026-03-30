@@ -14,6 +14,7 @@ import { LeadsForaSLA } from '@/pages/LeadsForaSLA'
 import { AnalisePlanilha } from '@/pages/AnalisePlanilha'
 import { DueDiligence } from '@/pages/DueDiligence'
 import { ConfigNotificacoesWpp } from '@/pages/ConfigNotificacoesWpp'
+import { DueDiligenceChartsGlobal } from '@/pages/DueDiligenceChartsGlobal'
 import { isAuthenticated } from '@/lib/auth'
 
 function LayoutContent() {
@@ -26,7 +27,7 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const { pathname } = useLocation()
   const isDashboard = pathname === '/analise-planilha'
-  const isDueDiligence = pathname === '/due-diligence'
+  const isDueDiligence = pathname === '/due-diligence' || pathname.startsWith('/due-diligence/')
   const isConfigWpp = pathname === '/config-whatsapp'
   const compactToolLayout = isDashboard || isDueDiligence || isConfigWpp
 
@@ -74,6 +75,14 @@ function App() {
               <Route path="/sla" element={<ProtectedGate areaName="SLA"><LeadsForaSLA /></ProtectedGate>} />
               <Route path="/analise-planilha" element={<ProtectedGate areaName="Dashboard"><AnalisePlanilha /></ProtectedGate>} />
               <Route path="/due-diligence" element={<ProtectedGate areaName="Due Diligence"><DueDiligence /></ProtectedGate>} />
+              <Route
+                path="/due-diligence/graficos"
+                element={
+                  <ProtectedGate areaName="Due Diligence">
+                    <DueDiligenceChartsGlobal />
+                  </ProtectedGate>
+                }
+              />
               <Route
                 path="/config-whatsapp"
                 element={

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, ExternalLink, BarChart3, Clock, LogOut, FileCheck, MessageCircle } from 'lucide-react'
+import { TrendingUp, ExternalLink, BarChart3, Clock, LogOut, FileCheck, MessageCircle, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clearAuthenticated } from '@/lib/auth'
 
@@ -8,7 +8,8 @@ export function Header() {
   const isValidacao = pathname === '/validacao'
   const isSla = pathname === '/sla'
   const isDashboard = pathname === '/analise-planilha'
-  const isDueDiligence = pathname === '/due-diligence'
+  const isDueDiligence = pathname === '/due-diligence' || pathname.startsWith('/due-diligence/')
+  const isDueDiligenceCharts = pathname === '/due-diligence/graficos'
   const isConfigWpp = pathname === '/config-whatsapp'
 
   return (
@@ -72,7 +73,7 @@ export function Header() {
           <Link
             to="/due-diligence"
             className={`ml-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
-              isDueDiligence
+              isDueDiligence && !isDueDiligenceCharts
                 ? 'text-white bg-white/20 border-white/30'
                 : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
             }`}
@@ -90,6 +91,18 @@ export function Header() {
           >
             <MessageCircle className="h-4 w-4" />
             WhatsApp
+          </Link>
+          <Link
+            to="/due-diligence/graficos"
+            className={`ml-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 border flex items-center gap-2 ${
+              isDueDiligenceCharts
+                ? 'text-white bg-white/20 border-white/30'
+                : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border-white/20 hover:border-sales/50'
+            }`}
+            title="Estilo e tipo de gráfico globais do PPT"
+          >
+            <Palette className="h-4 w-4" />
+            Gráficos PPT
           </Link>
         </motion.nav>
 
