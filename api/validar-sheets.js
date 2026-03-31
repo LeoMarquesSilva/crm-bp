@@ -547,6 +547,7 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Ligia Lopes',
   'Francisco Zanin',
   'Jorge Pecht Souza',
+  'Priscila Varga de Morais',
 ]
 
 function normalizarNomeParaComparacao(s) {
