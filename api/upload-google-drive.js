@@ -4,6 +4,8 @@
  * Se due_diligence_folder=true: cria/usa "Due Diligence" / {razao_social} e envia o arquivo lá.
  * Resposta: { webViewLink, id } do arquivo criado no Drive.
  */
+import { isGoogleAuthError, refreshSharedGoogleAccessToken } from './_google-auth.js'
+
 const DRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink'
 const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files'
 
@@ -19,7 +21,12 @@ async function findFolderByName(accessToken, folderName, parentId) {
   const url = `${DRIVE_FILES}?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   const data = await r.json()
-  if (!r.ok) throw new Error(data.error?.message || 'Falha ao listar pastas no Drive')
+  if (!r.ok) {
+    const err = new Error(data.error?.message || 'Falha ao listar pastas no Drive')
+    err.status = r.status
+    err.payload = data
+    throw err
+  }
   return data.files?.[0]?.id || null
 }
 
@@ -35,7 +42,12 @@ async function createFolder(accessToken, folderName, parentId) {
     body: JSON.stringify(body),
   })
   const data = await r.json()
-  if (!r.ok) throw new Error(data.error?.message || 'Falha ao criar pasta no Drive')
+  if (!r.ok) {
+    const err = new Error(data.error?.message || 'Falha ao criar pasta no Drive')
+    err.status = r.status
+    err.payload = data
+    throw err
+  }
   return data.id
 }
 
@@ -51,43 +63,17 @@ async function resolveDueDiligenceParentId(accessToken, razaoSocial) {
   return findOrCreateFolder(accessToken, sub, rootDue)
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  let accessToken
-  let fileName
-  let fileBuffer
-  let mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-
-  const contentType = (req.headers['content-type'] || '').toLowerCase()
+async function uploadDriveFile({
+  accessToken,
+  fileName,
+  mimeType,
+  fileBuffer,
+  dueDiligenceFolder,
+  dueDiligenceRazaoSocial,
+}) {
   let parentFolderId = null
-
-  if (contentType.includes('application/json')) {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
-    accessToken = body.access_token
-    fileName = body.file_name
-    const b64 = body.file_base64
-    mimeType = body.mime_type || mimeType
-    if (!accessToken || !fileName || !b64) {
-      return res.status(400).json({ error: 'access_token, file_name e file_base64 são obrigatórios' })
-    }
-    try {
-      fileBuffer = Buffer.from(b64, 'base64')
-    } catch {
-      return res.status(400).json({ error: 'file_base64 inválido' })
-    }
-    if (body.due_diligence_folder === true && body.due_diligence_razao_social) {
-      try {
-        parentFolderId = await resolveDueDiligenceParentId(accessToken, String(body.due_diligence_razao_social))
-      } catch (e) {
-        console.error('Due Diligence folder error:', e)
-        return res.status(500).json({ error: e.message || 'Falha ao criar pasta Due Diligence' })
-      }
-    }
-  } else {
-    return res.status(400).json({ error: 'Content-Type deve ser application/json com access_token, file_name e file_base64' })
+  if (dueDiligenceFolder === true && dueDiligenceRazaoSocial) {
+    parentFolderId = await resolveDueDiligenceParentId(accessToken, dueDiligenceRazaoSocial)
   }
 
   const boundary = '-------drive_upload_' + Date.now()
@@ -113,17 +99,94 @@ export default async function handler(req, res) {
     Buffer.from(endPart, 'utf8'),
   ])
 
+  const driveRes = await fetch(DRIVE_UPLOAD_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+      'Content-Length': String(body.length),
+    },
+    body,
+  })
+  const data = await driveRes.json()
+  return { driveRes, data }
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  let accessToken
+  let fileName
+  let fileBuffer
+  let mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  let dueDiligenceFolder = false
+  let dueDiligenceRazaoSocial = null
+
+  const contentType = (req.headers['content-type'] || '').toLowerCase()
+
+  if (contentType.includes('application/json')) {
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
+    accessToken = body.access_token
+    fileName = body.file_name
+    const b64 = body.file_base64
+    mimeType = body.mime_type || mimeType
+    if (!accessToken || !fileName || !b64) {
+      return res.status(400).json({ error: 'access_token, file_name e file_base64 são obrigatórios' })
+    }
+    try {
+      fileBuffer = Buffer.from(b64, 'base64')
+    } catch {
+      return res.status(400).json({ error: 'file_base64 inválido' })
+    }
+    dueDiligenceFolder = body.due_diligence_folder === true
+    dueDiligenceRazaoSocial = body.due_diligence_razao_social
+      ? String(body.due_diligence_razao_social)
+      : null
+  } else {
+    return res.status(400).json({ error: 'Content-Type deve ser application/json com access_token, file_name e file_base64' })
+  }
+
   try {
-    const driveRes = await fetch(DRIVE_UPLOAD_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-        'Content-Length': String(body.length),
-      },
-      body,
-    })
-    const data = await driveRes.json()
+    let driveRes
+    let data
+    try {
+      ;({ driveRes, data } = await uploadDriveFile({
+        accessToken,
+        fileName,
+        mimeType,
+        fileBuffer,
+        dueDiligenceFolder,
+        dueDiligenceRazaoSocial,
+      }))
+    } catch (firstErr) {
+      if (!isGoogleAuthError(firstErr?.status, firstErr?.payload)) {
+        throw firstErr
+      }
+      const refreshed = await refreshSharedGoogleAccessToken()
+      accessToken = refreshed.accessToken
+      ;({ driveRes, data } = await uploadDriveFile({
+        accessToken,
+        fileName,
+        mimeType,
+        fileBuffer,
+        dueDiligenceFolder,
+        dueDiligenceRazaoSocial,
+      }))
+    }
+    if (isGoogleAuthError(driveRes.status, data)) {
+      const refreshed = await refreshSharedGoogleAccessToken()
+      accessToken = refreshed.accessToken
+      ;({ driveRes, data } = await uploadDriveFile({
+        accessToken,
+        fileName,
+        mimeType,
+        fileBuffer,
+        dueDiligenceFolder,
+        dueDiligenceRazaoSocial,
+      }))
+    }
     if (!driveRes.ok) {
       const errObj = typeof data.error === 'object' ? data.error : null
       const errMsg =
@@ -143,6 +206,9 @@ export default async function handler(req, res) {
       webViewLink: data.webViewLink || `https://drive.google.com/file/d/${data.id}/view`,
     })
   } catch (err) {
+    if (isGoogleAuthError(err?.status, err?.payload)) {
+      return res.status(401).json({ error: 'Token expirado. Reconecte o Google Drive.' })
+    }
     console.error('Upload Drive error:', err)
     return res.status(500).json({ error: err.message || 'Erro ao enviar para o Drive' })
   }

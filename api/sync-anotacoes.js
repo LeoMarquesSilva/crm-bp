@@ -5,6 +5,7 @@
  * pega a data mais recente de cada e atualiza a coluna follow_up na planilha.
  * Requer: RD_CRM_TOKEN no .env
  */
+import { isGoogleAuthError, refreshSharedGoogleAccessToken } from './_google-auth.js'
 
 function normalizeHeader(s) {
   if (!s || typeof s !== 'string') return ''
@@ -66,6 +67,7 @@ export default async function handler(req, res) {
 
   try {
     const { accessToken, spreadsheetId, sheetName } = req.body || {}
+    let googleAccessToken = accessToken
 
     if (!accessToken || !spreadsheetId) {
       return res.status(400).json({
@@ -114,10 +116,19 @@ export default async function handler(req, res) {
       : 'A:ZZ'
     const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(rangeStr)}`
 
-    const sheetRes = await fetch(readUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    let sheetRes = await fetch(readUrl, {
+      headers: { Authorization: `Bearer ${googleAccessToken}` },
     })
-    const sheetData = await sheetRes.json()
+    let sheetData = await sheetRes.json()
+
+    if (isGoogleAuthError(sheetRes.status, sheetData)) {
+      const refreshed = await refreshSharedGoogleAccessToken()
+      googleAccessToken = refreshed.accessToken
+      sheetRes = await fetch(readUrl, {
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      })
+      sheetData = await sheetRes.json()
+    }
 
     if (sheetData.error) {
       return res.status(400).json({
@@ -203,11 +214,11 @@ export default async function handler(req, res) {
 
     // 4. Escrever na planilha (batch update)
     const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`
-    const batchRes = await fetch(batchUrl, {
+    let batchRes = await fetch(batchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${googleAccessToken}`,
       },
       body: JSON.stringify({
         valueInputOption: 'USER_ENTERED',
@@ -215,7 +226,23 @@ export default async function handler(req, res) {
       }),
     })
 
-    const batchJson = await batchRes.json()
+    let batchJson = await batchRes.json()
+    if (isGoogleAuthError(batchRes.status, batchJson)) {
+      const refreshed = await refreshSharedGoogleAccessToken()
+      googleAccessToken = refreshed.accessToken
+      batchRes = await fetch(batchUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${googleAccessToken}`,
+        },
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: updates,
+        }),
+      })
+      batchJson = await batchRes.json()
+    }
     if (batchJson.error) {
       return res.status(400).json({
         error: 'Erro ao atualizar planilha',

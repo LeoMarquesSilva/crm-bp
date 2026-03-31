@@ -3,6 +3,7 @@
  * POST body: { accessToken, spreadsheetId, sheetName?, range? }
  * Resposta: { results: [{ rowIndex, valid, errors, email_notificar, ... }], total, comErros }
  */
+import { isGoogleAuthError, refreshSharedGoogleAccessToken } from './_google-auth.js'
 
 // --- Mapeamento: nome da coluna na planilha → chave usada na validação ---
 function normalizeHeader(s) {
@@ -534,6 +535,7 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Gustavo Bismarchi',
   'Ricardo Viscardi Pires',
   'Giancarlo Zotini',
+  'Henrique Franco Nascimento',
   'Gabriela Consul',
   'Michel Malaquias',
   'Daniel Pressatto Fernandes',
@@ -1051,6 +1053,7 @@ export default async function handler(req, res) {
 
   try {
     const { accessToken, spreadsheetId, sheetName, range: rangeParam, validationConfig, columnOverrides } = req.body || {}
+    let googleAccessToken = accessToken
 
     if (!accessToken || !spreadsheetId) {
       return res.status(400).json({
@@ -1063,11 +1066,18 @@ export default async function handler(req, res) {
     const rangeStr = rangeParam || (sheetName ? `'${sheetName}'!A:ZZ` : 'A:ZZ')
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(rangeStr)}`
 
-    const sheetRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    let sheetRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${googleAccessToken}` },
     })
-
-    const sheetData = await sheetRes.json()
+    let sheetData = await sheetRes.json()
+    if (isGoogleAuthError(sheetRes.status, sheetData)) {
+      const refreshed = await refreshSharedGoogleAccessToken()
+      googleAccessToken = refreshed.accessToken
+      sheetRes = await fetch(url, {
+        headers: { Authorization: `Bearer ${googleAccessToken}` },
+      })
+      sheetData = await sheetRes.json()
+    }
     if (sheetData.error) {
       return res.status(400).json({
         error: 'Erro ao ler planilha',
