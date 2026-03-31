@@ -2371,7 +2371,7 @@ export function ValidacaoSheets() {
           )}
 
           <p className="text-xs text-gray-500">
-            A validação usa <strong>funil</strong> e <strong>stage_name</strong>. No <strong>Funil de vendas</strong>, todas as linhas são validadas (cadastro do lead: solicitante, e-mail, razão social, CNPJ, etc.). Na etapa <strong>Confecção de proposta</strong> também são exigidos: Nome completo do ponto focal/comercial (nome + sobrenome), e-mail válido e telefone (10–11 dígitos). Stages desconsiderados: Contato Inicial, Contato feito, Contato Trimestral, Descartados, Mensagem Enviada, Suspenso, Lead Quente, Contato Mensal, Lead Capturado. Status: Won = ganho, Lost = perda.
+            A validação usa <strong>funil</strong> e <strong>stage_name</strong>. No <strong>Funil de vendas</strong>, todas as linhas são validadas (cadastro do lead: solicitante, e-mail, razão social, CNPJ, etc.). Na etapa <strong>Confecção de proposta</strong> também são exigidos: Nome completo do ponto focal/comercial (nome + sobrenome), e-mail válido e telefone (10–11 dígitos). A lista exibe todos os erros aplicáveis ao estado atual da linha; regras condicionais (como Due Diligence = Sim e Tipo de Lead = Indicação) só aparecem quando o campo gatilho é preenchido. Stages desconsiderados: Contato Inicial, Contato feito, Contato Trimestral, Descartados, Mensagem Enviada, Suspenso, Lead Quente, Contato Mensal, Lead Capturado. Status: Won = ganho, Lost = perda.
           </p>
         </>
       )}

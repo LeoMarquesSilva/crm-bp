@@ -575,6 +575,33 @@ function emailUsaDominioErrado(val) {
   return lower.endsWith('@' + DOMINIO_ALTERNATIVO)
 }
 
+function validarCampoEmail(errors, config, scope, key, label, value, requiredHint, invalidHint) {
+  const val = (value ?? '').toString().trim()
+  if (vazio(val)) {
+    addErrorIfEnabled(errors, config, scope, key, label, 'Campo obrigatório.', requiredHint, val)
+    return
+  }
+
+  const emailValido = REGEX_EMAIL.test(val)
+  if (!emailValido) {
+    addErrorIfEnabled(errors, config, scope, key, label, 'E-mail inválido.', invalidHint, val)
+  }
+
+  // Mantém verificação independente para acumular problema de domínio quando aplicável.
+  if (emailUsaDominioErrado(val)) {
+    addErrorIfEnabled(
+      errors,
+      config,
+      scope,
+      key,
+      label,
+      'Use o domínio @bismarchipires.com.br.',
+      'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).',
+      val
+    )
+  }
+}
+
 function vazio(val) {
   if (val == null) return true
   if (typeof val === 'string') return val.trim() === ''
@@ -610,21 +637,27 @@ function validarCadastroLead(data, config) {
   else if (!solicitanteNomeValido(sol))
     add('cadastro_lead', 'solicitante', 'Solicitante', 'Nome incorreto. Deve ser um dos colaboradores cadastrados.', 'Preencha exatamente como: ' + SOLICITANTE_NOMES_VALIDOS.join(', '), sol)
 
-  const emailVal = (get('email') ?? '').toString().trim()
-  if (vazio(emailVal))
-    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'Campo obrigatório.', 'E-mail corporativo válido.', emailVal)
-  else if (!REGEX_EMAIL.test(emailVal))
-    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'E-mail inválido.', 'Use e-mail corporativo válido.', emailVal)
-  else if (emailUsaDominioErrado(emailVal))
-    add('cadastro_lead', 'email', 'E-mail do Solicitante', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', emailVal)
+  validarCampoEmail(
+    errors,
+    config,
+    'cadastro_lead',
+    'email',
+    'E-mail do Solicitante',
+    get('email'),
+    'E-mail corporativo válido.',
+    'Use e-mail corporativo válido.'
+  )
 
-  const cadPor = (get('cadastrado_por') ?? '').toString().trim()
-  if (vazio(cadPor))
-    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'Campo obrigatório.', 'E-mail do colaborador.', cadPor)
-  else if (!REGEX_EMAIL.test(cadPor))
-    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'E-mail inválido.', 'Use e-mail corporativo válido.', cadPor)
-  else if (emailUsaDominioErrado(cadPor))
-    add('cadastro_lead', 'cadastrado_por', 'Cadastro realizado por (e-mail)', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', cadPor)
+  validarCampoEmail(
+    errors,
+    config,
+    'cadastro_lead',
+    'cadastrado_por',
+    'Cadastro realizado por (e-mail)',
+    get('cadastrado_por'),
+    'E-mail do colaborador.',
+    'Use e-mail corporativo válido.'
+  )
 
   if (vazio(get('due_diligence')))
     add('cadastro_lead', 'due_diligence', 'Haverá Due Diligence?', 'Campo obrigatório.', 'Selecione "Sim" ou "Não".', get('due_diligence'))
@@ -740,14 +773,16 @@ function validarConfecaoProposta(data, config) {
     add(scope, 'nome_ponto_focal', 'Nome do ponto focal / Comercial [CP]', 'Informe nome completo (nome e sobrenome).', 'Ex.: Maria Costa Silva — não use apenas o primeiro nome.', nomePf)
   }
 
-  const emailPf = (get('email_ponto_focal') ?? get('email_do_ponto_focal') ?? '').toString().trim()
-  if (vazio(emailPf)) {
-    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Campo obrigatório.', 'E-mail corporativo válido.', emailPf)
-  } else if (!REGEX_EMAIL.test(emailPf)) {
-    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'E-mail inválido.', 'Use e-mail corporativo ativo.', emailPf)
-  } else if (emailUsaDominioErrado(emailPf)) {
-    add(scope, 'email_ponto_focal', 'E-mail do ponto focal / Comercial [CP]', 'Use o domínio @bismarchipires.com.br.', 'O correto a ser preenchido é com o domínio @bismarchipires.com.br (não @bpplaw.com.br).', emailPf)
-  }
+  validarCampoEmail(
+    errors,
+    config,
+    scope,
+    'email_ponto_focal',
+    'E-mail do ponto focal / Comercial [CP]',
+    get('email_ponto_focal') ?? get('email_do_ponto_focal'),
+    'E-mail corporativo válido.',
+    'Use e-mail corporativo ativo.'
+  )
 
   const telPf = (get('telefone_ponto_focal') ?? get('telefone_do_ponto_focal') ?? '').toString().trim()
   if (vazio(telPf)) {
