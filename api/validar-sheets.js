@@ -176,19 +176,20 @@ const COLUMN_TO_KEY = {
   valor_spot_condicionado_cc: 'valor_spot_condicionado_cc',
   exito_valor_r_cc: 'valor_exito_cc',
   valor_exito_cc: 'valor_exito_cc',
-  rateio_porcentagem_reestruturacao_insolvencia_cc: 'rateio_reestruturacao_cc',
-  rateio_reestruturacao_cc: 'rateio_reestruturacao_cc',
-  rateio_porcentagem_civel_cc: 'rateio_civel_cc',
-  rateio_civel_cc: 'rateio_civel_cc',
-  rateio_porcentagem_trabalhista_cc: 'rateio_trabalhista_cc',
-  rateio_trabalhista_cc: 'rateio_trabalhista_cc',
-  rateio_porcentagem_tributario_cc: 'rateio_tributario_cc',
-  rateio_tributario_cc: 'rateio_tributario_cc',
-  rateio_porcentagem_contratos_societario_cc: 'rateio_contratos_cc',
-  rateio_contratos_societario_cc: 'rateio_contratos_cc',
-  rateio_contratos_cc: 'rateio_contratos_cc',
-  rateio_porcentagem_add_cc: 'rateio_add_cc',
-  rateio_add_cc: 'rateio_add_cc',
+  // Aliases legados (% rateio no formato _cc) -> sempre convergem para chave canônica *_financeiro
+  rateio_porcentagem_reestruturacao_insolvencia_cc: 'rateio_porcentagem_insolvencia_financeiro',
+  rateio_reestruturacao_cc: 'rateio_porcentagem_insolvencia_financeiro',
+  rateio_porcentagem_civel_cc: 'rateio_porcentagem_civel_financeiro',
+  rateio_civel_cc: 'rateio_porcentagem_civel_financeiro',
+  rateio_porcentagem_trabalhista_cc: 'rateio_porcentagem_trabalhista_financeiro',
+  rateio_trabalhista_cc: 'rateio_porcentagem_trabalhista_financeiro',
+  rateio_porcentagem_tributario_cc: 'rateio_porcentagem_tributario_financeiro',
+  rateio_tributario_cc: 'rateio_porcentagem_tributario_financeiro',
+  rateio_porcentagem_contratos_societario_cc: 'rateio_porcentagem_contratos_financeiro',
+  rateio_contratos_societario_cc: 'rateio_porcentagem_contratos_financeiro',
+  rateio_contratos_cc: 'rateio_porcentagem_contratos_financeiro',
+  rateio_porcentagem_add_cc: 'rateio_porcentagem_add_financeiro',
+  rateio_add_cc: 'rateio_porcentagem_add_financeiro',
   prazo_para_confecao_do_contrato_cc: 'prazo_contrato_cc',
   prazo_confecao_contrato_cc: 'prazo_contrato_cc',
   prazo_contrato_cc: 'prazo_contrato_cc',
@@ -231,13 +232,13 @@ const COLUMN_TO_KEY = {
   spot_parcelado_manutencao_financeiro: 'valor_spot_parcelado_manutencao_cc',
   spot_condicionado_financeiro: 'valor_spot_condicionado_cc',
   exito_financeiro: 'valor_exito_cc',
-  // Rateio % [CC] – sufixo _financeiro no CRM
-  rateio_porcentagem_insolvencia_financeiro: 'rateio_reestruturacao_cc',
-  rateio_porcentagem_civel_financeiro: 'rateio_civel_cc',
-  rateio_porcentagem_trabalhista_financeiro: 'rateio_trabalhista_cc',
-  rateio_porcentagem_tributario_financeiro: 'rateio_tributario_cc',
-  rateio_porcentagem_contratos_financeiro: 'rateio_contratos_cc',
-  rateio_porcentagem_add_financeiro: 'rateio_add_cc',
+  // Rateio % [CC] – usar chave canônica *_financeiro (compatível com frontend Financeiro)
+  rateio_porcentagem_insolvencia_financeiro: 'rateio_porcentagem_insolvencia_financeiro',
+  rateio_porcentagem_civel_financeiro: 'rateio_porcentagem_civel_financeiro',
+  rateio_porcentagem_trabalhista_financeiro: 'rateio_porcentagem_trabalhista_financeiro',
+  rateio_porcentagem_tributario_financeiro: 'rateio_porcentagem_tributario_financeiro',
+  rateio_porcentagem_contratos_financeiro: 'rateio_porcentagem_contratos_financeiro',
+  rateio_porcentagem_add_financeiro: 'rateio_porcentagem_add_financeiro',
   // Colunas da planilha (nomes exatos após normalização)
   date_create: 'created_at',
   date_update: 'updated_at',
@@ -891,6 +892,24 @@ const RATEIO_CC_LABEL = {
   rateio_add_cc: 'RATEIO - PORCENTAGEM % (ADD) - [CC]',
 }
 
+const RATEIO_PERCENT_CANONICAL_KEYS = [
+  'rateio_porcentagem_insolvencia_financeiro',
+  'rateio_porcentagem_civel_financeiro',
+  'rateio_porcentagem_trabalhista_financeiro',
+  'rateio_porcentagem_tributario_financeiro',
+  'rateio_porcentagem_contratos_financeiro',
+  'rateio_porcentagem_add_financeiro',
+]
+
+const LEGACY_RATEIO_PERCENT_TO_CANONICAL = {
+  rateio_reestruturacao_cc: 'rateio_porcentagem_insolvencia_financeiro',
+  rateio_civel_cc: 'rateio_porcentagem_civel_financeiro',
+  rateio_trabalhista_cc: 'rateio_porcentagem_trabalhista_financeiro',
+  rateio_tributario_cc: 'rateio_porcentagem_tributario_financeiro',
+  rateio_contratos_cc: 'rateio_porcentagem_contratos_financeiro',
+  rateio_add_cc: 'rateio_porcentagem_add_financeiro',
+}
+
 function valorNumericoCCValido(v) {
   if (v == null || v === '') return true
   const s = String(v).trim()
@@ -1165,6 +1184,17 @@ export default async function handler(req, res) {
         const jaTemValor = data[key] != null && String(data[key]).trim() !== '' && String(data[key]).trim() !== '[]'
         if (strVal === '' && jaTemValor) return
         data[key] = strVal
+      })
+
+      // Compatibilidade: consolidar aliases legados de rateio (% _cc) nas chaves canônicas *_financeiro.
+      for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_RATEIO_PERCENT_TO_CANONICAL)) {
+        const canonicalVal = (data[canonicalKey] ?? '').toString().trim()
+        const legacyVal = (data[legacyKey] ?? '').toString().trim()
+        if (!canonicalVal && legacyVal) data[canonicalKey] = legacyVal
+      }
+      // Garantir presença das chaves canônicas no objeto final.
+      RATEIO_PERCENT_CANONICAL_KEYS.forEach((k) => {
+        if (data[k] == null) data[k] = ''
       })
 
       // Planilha pode ter só email_solicitante: usar como email e como cadastrado_por

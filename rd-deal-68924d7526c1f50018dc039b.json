@@ -1,0 +1,1811 @@
+﻿{
+    "_id":  "68924d7526c1f50018dc039b",
+    "id":  "68924d7526c1f50018dc039b",
+    "name":  "Officer",
+    "amount_montly":  0.0,
+    "amount_unique":  0.0,
+    "amount_total":  0.0,
+    "prediction_date":  null,
+    "markup":  "future",
+    "last_activity_at":  null,
+    "interactions":  2,
+    "markup_last_activities":  null,
+    "created_at":  "2025-08-05T15:29:09.374-03:00",
+    "updated_at":  "2025-08-29T16:44:56.032-03:00",
+    "rating":  1,
+    "markup_created":  "30 days more",
+    "last_activity_content":  null,
+    "user_changed":  true,
+    "hold":  null,
+    "win":  null,
+    "closed_at":  null,
+    "stop_time_limit":  {
+
+                        },
+    "organization":  {
+                         "_id":  "684453e23c9fe5001eed6ded",
+                         "id":  "684453e23c9fe5001eed6ded",
+                         "name":  "OFFICER S.A. DISTRIBUIDORA DE PRODUTOS DE TECNOLOGIA – EM RECUPERAÇÃO JUDICIAL",
+                         "address":  null,
+                         "address_latitude":  null,
+                         "address_longitude":  null,
+                         "user":  {
+                                      "_id":  "6801449ea076cc001c2b0cd2",
+                                      "id":  "6801449ea076cc001c2b0cd2",
+                                      "name":  "Giancarlo Murta Zotini",
+                                      "email":  "giancarlo@bismarchipires.com.br"
+                                  },
+                         "organization_segments":  [
+                                                       {
+                                                           "_id":  "66f1990972479b001af06586",
+                                                           "id":  "66f1990972479b001af06586",
+                                                           "name":  "Corporativo",
+                                                           "integration_id":  null,
+                                                           "created_at":  "2024-09-23T13:36:25.239-03:00",
+                                                           "updated_at":  "2024-09-23T13:36:25.239-03:00"
+                                                       }
+                                                   ]
+                     },
+    "user":  {
+                 "_id":  "6801449ea076cc001c2b0cd2",
+                 "id":  "6801449ea076cc001c2b0cd2",
+                 "name":  "Giancarlo Murta Zotini",
+                 "nickname":  "GZ",
+                 "email":  "giancarlo@bismarchipires.com.br"
+             },
+    "deal_stage":  {
+                       "_id":  "67d2fb3b84b84d00270ba66b",
+                       "id":  "67d2fb3b84b84d00270ba66b",
+                       "name":  "Inclusão no fluxo de faturamento",
+                       "nickname":  "INFDF",
+                       "created_at":  "2025-03-13T12:35:23.723-03:00",
+                       "updated_at":  "2025-07-10T23:59:05.092-03:00"
+                   },
+    "deal_source":  {
+                        "_id":  "66f1990972479b001af06592",
+                        "id":  "66f1990972479b001af06592",
+                        "name":  "Cliente Ativo",
+                        "created_at":  "2024-09-23T13:36:25.428-03:00",
+                        "updated_at":  "2024-09-23T13:36:25.428-03:00"
+                    },
+    "campaign":  {
+                     "_id":  "66f198c94e97d600268963b1",
+                     "id":  "66f198c94e97d600268963b1",
+                     "name":  "Sem Campanha",
+                     "created_at":  "2024-09-23T13:35:21.520-03:00",
+                     "updated_at":  "2024-09-23T13:35:21.520-03:00"
+                 },
+    "contacts":  [
+                     {
+                         "name":  "Luciano Kubrusly",
+                         "title":  "",
+                         "notes":  null,
+                         "facebook":  null,
+                         "linkedin":  null,
+                         "skype":  null,
+                         "birthday":  null,
+                         "emails":  [
+                                        {
+                                            "email":  "luciano.kubrusly@officer.com.br"
+                                        }
+                                    ],
+                         "phones":  [
+                                        {
+                                            "phone":  "11 97359-4488",
+                                            "type":  null
+                                        }
+                                    ]
+                     }
+                 ],
+    "deal_custom_fields":  [
+                               {
+                                   "value":  "GIANCARLO MURTA ZOTINI",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "679bd63010f8c800140fa841",
+                                   "custom_field":  {
+                                                        "_id":  "679bd63010f8c800140fa841",
+                                                        "id":  "679bd63010f8c800140fa841",
+                                                        "for":  "deal",
+                                                        "label":  "Solicitante",
+                                                        "order":  1,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-01-30T16:42:40.371-03:00",
+                                                        "updated_at":  "2025-08-31T22:12:51.465-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "OFFICER S.A. DISTRIBUIDORA DE PRODUTOS DE TECNOLOGIA – EM RECUPERAÇÃO JUDICIAL",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67570fde26098e0013e0a4cb",
+                                   "custom_field":  {
+                                                        "_id":  "67570fde26098e0013e0a4cb",
+                                                        "id":  "67570fde26098e0013e0a4cb",
+                                                        "for":  "deal",
+                                                        "label":  "Razão Social [CP]",
+                                                        "order":  2,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:42:22.140-03:00",
+                                                        "updated_at":  "2025-02-27T13:41:18.010-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "71.702.716/0001-89",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67571030a8b82a001395a12b",
+                                   "custom_field":  {
+                                                        "_id":  "67571030a8b82a001395a12b",
+                                                        "id":  "67571030a8b82a001395a12b",
+                                                        "for":  "deal",
+                                                        "label":  "CNPJ [CP]",
+                                                        "order":  3,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:43:44.465-03:00",
+                                                        "updated_at":  "2025-08-31T21:50:35.778-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  [
+                                                 "Cível"
+                                             ],
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "675710a3bb27e30023e09b63",
+                                   "custom_field":  {
+                                                        "_id":  "675710a3bb27e30023e09b63",
+                                                        "id":  "675710a3bb27e30023e09b63",
+                                                        "for":  "deal",
+                                                        "label":  "Áreas que serão objeto de análise",
+                                                        "order":  6,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "multiple_choice",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:45:39.019-03:00",
+                                                        "updated_at":  "2025-09-12T15:00:33.471-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67571064873093001ed5e059",
+                                   "custom_field":  {
+                                                        "_id":  "67571064873093001ed5e059",
+                                                        "id":  "67571064873093001ed5e059",
+                                                        "for":  "deal",
+                                                        "label":  "Data Reunião",
+                                                        "order":  7,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:44:36.393-03:00",
+                                                        "updated_at":  "2026-01-27T16:08:39.634-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  [
+                                                 "Cível"
+                                             ],
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "675710f3c0fec50026e96241",
+                                   "custom_field":  {
+                                                        "_id":  "675710f3c0fec50026e96241",
+                                                        "id":  "675710f3c0fec50026e96241",
+                                                        "for":  "deal",
+                                                        "label":  "Áreas para comparecimento na reunião",
+                                                        "order":  6,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "multiple_choice",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:46:59.866-03:00",
+                                                        "updated_at":  "2026-01-27T16:08:31.770-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "ONLINE",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "6757107a3efa730019df7baa",
+                                   "custom_field":  {
+                                                        "_id":  "6757107a3efa730019df7baa",
+                                                        "id":  "6757107a3efa730019df7baa",
+                                                        "for":  "deal",
+                                                        "label":  "Local da Reunião",
+                                                        "order":  7,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:44:58.052-03:00",
+                                                        "updated_at":  "2025-08-31T21:50:35.912-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "GIANCARLO",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67571089533272001af0f83d",
+                                   "custom_field":  {
+                                                        "_id":  "67571089533272001af0f83d",
+                                                        "id":  "67571089533272001af0f83d",
+                                                        "for":  "deal",
+                                                        "label":  "Indicação",
+                                                        "order":  5,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T12:45:13.632-03:00",
+                                                        "updated_at":  "2026-01-27T16:08:41.554-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67571f97bc8874001e7a1bcd",
+                                   "custom_field":  {
+                                                        "_id":  "67571f97bc8874001e7a1bcd",
+                                                        "id":  "67571f97bc8874001e7a1bcd",
+                                                        "for":  "deal",
+                                                        "label":  "Prazo de Entrega Due [DATA]",
+                                                        "order":  9,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2024-12-09T13:49:28.008-03:00",
+                                                        "updated_at":  "2025-08-31T21:50:39.380-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67cf1051022af70014bbe47f",
+                                   "custom_field":  {
+                                                        "_id":  "67cf1051022af70014bbe47f",
+                                                        "id":  "67cf1051022af70014bbe47f",
+                                                        "for":  "deal",
+                                                        "label":  "Prazo de Entrega Due [HORÁRIO]",
+                                                        "order":  10,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-10T13:16:17.313-03:00",
+                                                        "updated_at":  "2025-08-31T22:32:47.690-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "giancarlo@bismarchipires.com.br",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "679d1720999f5d0016fb6a69",
+                                   "custom_field":  {
+                                                        "_id":  "679d1720999f5d0016fb6a69",
+                                                        "id":  "679d1720999f5d0016fb6a69",
+                                                        "for":  "deal",
+                                                        "label":  "Email Solicitante",
+                                                        "order":  11,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-01-31T15:32:00.712-03:00",
+                                                        "updated_at":  "2025-08-31T22:13:31.063-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Aditivo",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67b48366a369660017cc36c2",
+                                   "custom_field":  {
+                                                        "_id":  "67b48366a369660017cc36c2",
+                                                        "id":  "67b48366a369660017cc36c2",
+                                                        "for":  "deal",
+                                                        "label":  "Tipo de Instrumento [CC]",
+                                                        "order":  12,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "option",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-18T09:56:06.355-03:00",
+                                                        "updated_at":  "2025-08-31T22:22:58.826-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "OFFICER S.A. DISTRIBUIDORA DE PRODUTOS DE TECNOLOGIA – EM RECUPERAÇÃO JUDICIAL, sociedade por ações de capital fechado, inscrita no CNPJ/MF sob o n.º 71.702.716/0001-89, com sede à Av. Sagitário, nº 138, 8º Andar, conjuntos 801A, 805, 814 e 818, Torre 1, Sítio Tamboré Alphaville, Barueri/SP, CEP 06.473-073, neste ato representada por seu representante legal, Luciano Kubrusly",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67b4841cc4b363001ee20f04",
+                                   "custom_field":  {
+                                                        "_id":  "67b4841cc4b363001ee20f04",
+                                                        "id":  "67b4841cc4b363001ee20f04",
+                                                        "for":  "deal",
+                                                        "label":  "Qualificação completa (endereço, CEP, endereço eletrônico etc.) [CP]",
+                                                        "order":  13,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-18T09:59:08.084-03:00",
+                                                        "updated_at":  "2025-08-31T22:22:59.108-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  null,
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67b484963433b2001cbdf376",
+                                   "custom_field":  {
+                                                        "_id":  "67b484963433b2001cbdf376",
+                                                        "id":  "67b484963433b2001cbdf376",
+                                                        "for":  "deal",
+                                                        "label":  "Áreas Objeto do contrato [CP]",
+                                                        "order":  14,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "multiple_choice",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-18T10:01:10.230-03:00",
+                                                        "updated_at":  "2025-08-31T22:22:59.507-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Não",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0995c46b6ba00149819db",
+                                   "custom_field":  {
+                                                        "_id":  "67c0995c46b6ba00149819db",
+                                                        "id":  "67c0995c46b6ba00149819db",
+                                                        "for":  "deal",
+                                                        "label":  "Realizou Due Diligence? [CP]",
+                                                        "order":  15,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "option",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:57:00.367-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:41.152-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "GIANCARLO",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67b4858a61c67f00144b57e5",
+                                   "custom_field":  {
+                                                        "_id":  "67b4858a61c67f00144b57e5",
+                                                        "id":  "67b4858a61c67f00144b57e5",
+                                                        "for":  "deal",
+                                                        "label":  "Nome da Indicação",
+                                                        "order":  6,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-18T10:05:14.865-03:00",
+                                                        "updated_at":  "2026-01-27T16:08:41.545-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "1",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0960b71a1a00014fd8f7e",
+                                   "custom_field":  {
+                                                        "_id":  "67c0960b71a1a00014fd8f7e",
+                                                        "id":  "67c0960b71a1a00014fd8f7e",
+                                                        "for":  "deal",
+                                                        "label":  "Limitação de processos e valor adicional por processo [CC]",
+                                                        "order":  17,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:42:51.152-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:39.918-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0962fb2f12c001bb8e5dc",
+                                   "custom_field":  {
+                                                        "_id":  "67c0962fb2f12c001bb8e5dc",
+                                                        "id":  "67c0962fb2f12c001bb8e5dc",
+                                                        "for":  "deal",
+                                                        "label":  "Limitação de horas (Consultivo) [CC]",
+                                                        "order":  18,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:43:27.748-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:40.062-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "CONTENCIOSO CÍVEL: Atuação em 1 processo arbitral, até o final do referido processo no âmbito arbitral.",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4499daec6d00014c64b06",
+                                   "custom_field":  {
+                                                        "_id":  "67e4499daec6d00014c64b06",
+                                                        "id":  "67e4499daec6d00014c64b06",
+                                                        "for":  "deal",
+                                                        "label":  "Objeto do Contrato [CC]",
+                                                        "order":  19,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T15:38:21.209-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:09.616-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0965a4a900900149d510e",
+                                   "custom_field":  {
+                                                        "_id":  "67c0965a4a900900149d510e",
+                                                        "id":  "67c0965a4a900900149d510e",
+                                                        "for":  "deal",
+                                                        "label":  "Êxito (Descrever áreas abrangidas e percentuais) [CC]",
+                                                        "order":  20,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:44:10.026-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:40.183-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "R$ 37.000,00 / Sendo R$ 10.000,00 de entrada e o remanescente em 5 parcelas iguais mensais e consecutivas de R$ 5.400,00 cada",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c096a859c97e001b1b139f",
+                                   "custom_field":  {
+                                                        "_id":  "67c096a859c97e001b1b139f",
+                                                        "id":  "67c096a859c97e001b1b139f",
+                                                        "for":  "deal",
+                                                        "label":  "Valores (descrever tipo de pagamento, valores e data de vencimento)  [CC]",
+                                                        "order":  23,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:45:28.673-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:40.258-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  [
+                                                 "Spot parcelado"
+                                             ],
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0971df065a20014b1e183",
+                                   "custom_field":  {
+                                                        "_id":  "67c0971df065a20014b1e183",
+                                                        "id":  "67c0971df065a20014b1e183",
+                                                        "for":  "deal",
+                                                        "label":  "Tipo de pagamento [CC]",
+                                                        "order":  21,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "multiple_choice",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:47:25.749-03:00",
+                                                        "updated_at":  "2025-08-12T12:38:23.166-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "R$ 37.000,00",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e461cc3a89130026269cb0",
+                                   "custom_field":  {
+                                                        "_id":  "67e461cc3a89130026269cb0",
+                                                        "id":  "67e461cc3a89130026269cb0",
+                                                        "for":  "deal",
+                                                        "label":  "SPOT - Valor R$  [CC]",
+                                                        "order":  22,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:21:32.217-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:20.386-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e460d838439d00278110e0",
+                                   "custom_field":  {
+                                                        "_id":  "67e460d838439d00278110e0",
+                                                        "id":  "67e460d838439d00278110e0",
+                                                        "for":  "deal",
+                                                        "label":  "Mensal – Fixo Valor R$ [CC]",
+                                                        "order":  24,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:17:28.077-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:19.221-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Luciano Kubrusly",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c09745c40f0a001459d092",
+                                   "custom_field":  {
+                                                        "_id":  "67c09745c40f0a001459d092",
+                                                        "id":  "67c09745c40f0a001459d092",
+                                                        "for":  "deal",
+                                                        "label":  "Nome do ponto focal / Comercial [CP]",
+                                                        "order":  25,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:48:06.043-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:40.471-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "luciano.kubrusly@officer.com.br",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c097763c7ece00190a8a26",
+                                   "custom_field":  {
+                                                        "_id":  "67c097763c7ece00190a8a26",
+                                                        "id":  "67c097763c7ece00190a8a26",
+                                                        "for":  "deal",
+                                                        "label":  "E-mail do ponto focal / Comercial [CP]",
+                                                        "order":  26,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:48:54.462-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.640-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "11 97359-4488",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c097ae2598390027ce871f",
+                                   "custom_field":  {
+                                                        "_id":  "67c097ae2598390027ce871f",
+                                                        "id":  "67c097ae2598390027ce871f",
+                                                        "for":  "deal",
+                                                        "label":  "Telefone do ponto focal / Comercial [CP]",
+                                                        "order":  27,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:49:50.579-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:40.609-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Giancarlo Murta Zotini",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c09932e61b140022c477ff",
+                                   "custom_field":  {
+                                                        "_id":  "67c09932e61b140022c477ff",
+                                                        "id":  "67c09932e61b140022c477ff",
+                                                        "for":  "deal",
+                                                        "label":  "Gestor do Contrato [CP]",
+                                                        "order":  28,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:56:18.562-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.651-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Giancarlo Murta Zotini",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c0998bb62189001430490c",
+                                   "custom_field":  {
+                                                        "_id":  "67c0998bb62189001430490c",
+                                                        "id":  "67c0998bb62189001430490c",
+                                                        "for":  "deal",
+                                                        "label":  "Captador [ CP]",
+                                                        "order":  29,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:57:47.076-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.656-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Valor Englobando Tributos",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c099d3dc7ceb00277bbc1c",
+                                   "custom_field":  {
+                                                        "_id":  "67c099d3dc7ceb00277bbc1c",
+                                                        "id":  "67c099d3dc7ceb00277bbc1c",
+                                                        "for":  "deal",
+                                                        "label":  "Tributação [CP]",
+                                                        "order":  30,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "option",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:58:59.526-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:41.286-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c099f39de3b4001a5ecf8c",
+                                   "custom_field":  {
+                                                        "_id":  "67c099f39de3b4001a5ecf8c",
+                                                        "id":  "67c099f39de3b4001a5ecf8c",
+                                                        "for":  "deal",
+                                                        "label":  "Informações adicionais [CP]",
+                                                        "order":  31,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T13:59:31.257-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.667-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "12/06/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c09a18ee05a100247a0f0c",
+                                   "custom_field":  {
+                                                        "_id":  "67c09a18ee05a100247a0f0c",
+                                                        "id":  "67c09a18ee05a100247a0f0c",
+                                                        "for":  "deal",
+                                                        "label":  "Data do primeiro vencimento [CP]",
+                                                        "order":  32,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T14:00:08.144-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.691-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "09/06/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c09a486b09980014c25e35",
+                                   "custom_field":  {
+                                                        "_id":  "67c09a486b09980014c25e35",
+                                                        "id":  "67c09a486b09980014c25e35",
+                                                        "for":  "deal",
+                                                        "label":  "Prazo para entrega (mínimo de 2 dias úteis - sinalizar exceções e motivos) [CP]",
+                                                        "order":  33,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-02-27T14:00:56.940-03:00",
+                                                        "updated_at":  "2025-08-31T22:28:41.656-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67cf114b68e2b7002224b66a",
+                                   "custom_field":  {
+                                                        "_id":  "67cf114b68e2b7002224b66a",
+                                                        "id":  "67cf114b68e2b7002224b66a",
+                                                        "for":  "deal",
+                                                        "label":  "Horário da Reunião",
+                                                        "order":  35,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-10T13:20:27.714-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.711-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67d317b572bbaf0014afdc4d",
+                                   "custom_field":  {
+                                                        "_id":  "67d317b572bbaf0014afdc4d",
+                                                        "id":  "67d317b572bbaf0014afdc4d",
+                                                        "for":  "deal",
+                                                        "label":  "Link do Arquivo DUE",
+                                                        "order":  36,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-13T14:36:53.584-03:00",
+                                                        "updated_at":  "2025-04-16T10:41:23.716-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67d82989acf0f300274bd85c",
+                                   "custom_field":  {
+                                                        "_id":  "67d82989acf0f300274bd85c",
+                                                        "id":  "67d82989acf0f300274bd85c",
+                                                        "for":  "deal",
+                                                        "label":  "Demais Razões sociais",
+                                                        "order":  37,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-17T10:54:17.093-03:00",
+                                                        "updated_at":  "2025-08-31T22:36:16.693-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67d82cf72aeac10014cdf8a9",
+                                   "custom_field":  {
+                                                        "_id":  "67d82cf72aeac10014cdf8a9",
+                                                        "id":  "67d82cf72aeac10014cdf8a9",
+                                                        "for":  "deal",
+                                                        "label":  "Link da Proposta [CP]",
+                                                        "order":  38,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-17T11:08:55.223-03:00",
+                                                        "updated_at":  "2025-08-31T22:36:17.185-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "09/06/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67d83e4c68f02a0026bde8ad",
+                                   "custom_field":  {
+                                                        "_id":  "67d83e4c68f02a0026bde8ad",
+                                                        "id":  "67d83e4c68f02a0026bde8ad",
+                                                        "for":  "deal",
+                                                        "label":  "Data de assinatura do contrato [CA]",
+                                                        "order":  40,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-17T12:22:52.591-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.545-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "https://bpplaw2.sharepoint.com/:f:/s/gestores/Ev5ifFUmardMs9weivMlGzIBGJYR5T7kjm1H4pCtHEKSiA?e=ZvSp2O",
+                                   "created_at":  null,
+                                   "updated_at":  "2025-08-05T16:24:22.350-03:00",
+                                   "custom_field_id":  "67d8919be2375d002729c6e9",
+                                   "custom_field":  {
+                                                        "_id":  "67d8919be2375d002729c6e9",
+                                                        "id":  "67d8919be2375d002729c6e9",
+                                                        "for":  "deal",
+                                                        "label":  "Link Contrato [CE]",
+                                                        "order":  42,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-17T18:18:19.625-03:00",
+                                                        "updated_at":  "2025-08-31T22:36:55.249-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  "2025-08-05T16:25:29.705-03:00",
+                                   "custom_field_id":  "67e4610da3458a0014469a92",
+                                   "custom_field":  {
+                                                        "_id":  "67e4610da3458a0014469a92",
+                                                        "id":  "67e4610da3458a0014469a92",
+                                                        "for":  "deal",
+                                                        "label":  "Mensal - Preço Fechado Parcelado - Valor R$ [CC]",
+                                                        "order":  59,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:18:21.848-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:19.470-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4620b3a89130014269cea",
+                                   "custom_field":  {
+                                                        "_id":  "67e4620b3a89130014269cea",
+                                                        "id":  "67e4620b3a89130014269cea",
+                                                        "for":  "deal",
+                                                        "label":  "SPOT com Manutenção - Valor R$  [CC]",
+                                                        "order":  60,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:22:35.809-03:00",
+                                                        "updated_at":  "2025-04-16T10:45:07.190-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4613be75fac001b0bf0b4",
+                                   "custom_field":  {
+                                                        "_id":  "67e4613be75fac001b0bf0b4",
+                                                        "id":  "67e4613be75fac001b0bf0b4",
+                                                        "for":  "deal",
+                                                        "label":  "Mensal – Escalonado - Valor R$ [CC]",
+                                                        "order":  61,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:19:07.790-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:19.727-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e46167634baa001b6f2b4a",
+                                   "custom_field":  {
+                                                        "_id":  "67e46167634baa001b6f2b4a",
+                                                        "id":  "67e46167634baa001b6f2b4a",
+                                                        "for":  "deal",
+                                                        "label":  "Mensal – Variável - Valor R$ [CC]",
+                                                        "order":  62,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:19:51.205-03:00",
+                                                        "updated_at":  "2025-04-16T10:46:22.489-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e46196a3458a0014469b6b",
+                                   "custom_field":  {
+                                                        "_id":  "67e46196a3458a0014469b6b",
+                                                        "id":  "67e46196a3458a0014469b6b",
+                                                        "for":  "deal",
+                                                        "label":  "Mensal – Condicionado - Valor R$ [CC]",
+                                                        "order":  63,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:20:38.148-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:20.139-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "R$ 37.000,00 / Sendo R$ 10.000,00 de entrada e o remanescente em 5 parcelas iguais mensais e consecutivas de R$ 5.400,00 cada",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4624d860b5500277b6ff5",
+                                   "custom_field":  {
+                                                        "_id":  "67e4624d860b5500277b6ff5",
+                                                        "id":  "67e4624d860b5500277b6ff5",
+                                                        "for":  "deal",
+                                                        "label":  "SPOT – Parcelado - Valor R$  [CC]",
+                                                        "order":  64,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:23:41.502-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:20.783-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4626fe0df0a001b3d9bc9",
+                                   "custom_field":  {
+                                                        "_id":  "67e4626fe0df0a001b3d9bc9",
+                                                        "id":  "67e4626fe0df0a001b3d9bc9",
+                                                        "for":  "deal",
+                                                        "label":  "SPOT - Parcelado com manutenção - Valor R$  [CC]",
+                                                        "order":  65,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:24:15.158-03:00",
+                                                        "updated_at":  "2025-04-16T10:48:51.507-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e462a3cb5e560014db402e",
+                                   "custom_field":  {
+                                                        "_id":  "67e462a3cb5e560014db402e",
+                                                        "id":  "67e462a3cb5e560014db402e",
+                                                        "for":  "deal",
+                                                        "label":  "SPOT – Condicionado - Valor R$  [CC]",
+                                                        "order":  66,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:25:08.003-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:21.166-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e462d7307c1e00148ef33f",
+                                   "custom_field":  {
+                                                        "_id":  "67e462d7307c1e00148ef33f",
+                                                        "id":  "67e462d7307c1e00148ef33f",
+                                                        "for":  "deal",
+                                                        "label":  "Êxito - Valor R$  [CC]",
+                                                        "order":  67,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:26:00.009-03:00",
+                                                        "updated_at":  "2025-04-16T10:50:41.300-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e46374cde933001bde8f3b",
+                                   "custom_field":  {
+                                                        "_id":  "67e46374cde933001bde8f3b",
+                                                        "id":  "67e46374cde933001bde8f3b",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM %  (Reestruturação e Insolvência) - [CC] ",
+                                                        "order":  70,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:28:36.847-03:00",
+                                                        "updated_at":  "2025-04-16T11:08:20.367-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "66,66%",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e463f23a89130014269fd4",
+                                   "custom_field":  {
+                                                        "_id":  "67e463f23a89130014269fd4",
+                                                        "id":  "67e463f23a89130014269fd4",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM %  (Cível) - [CC] ",
+                                                        "order":  73,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:30:42.427-03:00",
+                                                        "updated_at":  "2026-01-22T15:23:07.603-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "33,34%",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4649782a07200165a3e9b",
+                                   "custom_field":  {
+                                                        "_id":  "67e4649782a07200165a3e9b",
+                                                        "id":  "67e4649782a07200165a3e9b",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM %  (Trabalhista) - [CC] ",
+                                                        "order":  72,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:33:27.336-03:00",
+                                                        "updated_at":  "2026-01-22T15:23:07.630-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e465105a3608001450092b",
+                                   "custom_field":  {
+                                                        "_id":  "67e465105a3608001450092b",
+                                                        "id":  "67e465105a3608001450092b",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM % (Tributário) - [CC] ",
+                                                        "order":  75,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:35:29.006-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:22.079-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4658333c04f001bcd81bf",
+                                   "custom_field":  {
+                                                        "_id":  "67e4658333c04f001bcd81bf",
+                                                        "id":  "67e4658333c04f001bcd81bf",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM % (Contratos / Societário) - [CC] ",
+                                                        "order":  77,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:37:23.504-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:22.204-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "n/a",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e465e0e4fd35001b374b6d",
+                                   "custom_field":  {
+                                                        "_id":  "67e465e0e4fd35001b374b6d",
+                                                        "id":  "67e465e0e4fd35001b374b6d",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - PORCENTAGEM % (ADD) - [CC] ",
+                                                        "order":  80,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:38:56.916-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:22.469-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "09/06/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67f7e7d06136700027ffe9e2",
+                                   "custom_field":  {
+                                                        "_id":  "67f7e7d06136700027ffe9e2",
+                                                        "id":  "67f7e7d06136700027ffe9e2",
+                                                        "for":  "deal",
+                                                        "label":  "Prazo para Confecção do Contrato [CC]",
+                                                        "order":  84,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-04-10T12:46:24.768-03:00",
+                                                        "updated_at":  "2025-04-10T12:46:24.768-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "CONCLUÍDO",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67f82c8973ced8001b585f84",
+                                   "custom_field":  {
+                                                        "_id":  "67f82c8973ced8001b585f84",
+                                                        "id":  "67f82c8973ced8001b585f84",
+                                                        "for":  "deal",
+                                                        "label":  "STATUS [CADASTRO]",
+                                                        "order":  85,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "option",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-04-10T17:39:38.043-03:00",
+                                                        "updated_at":  "2025-08-31T22:51:09.927-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "92",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67f85348f9bbf3001bcd4531",
+                                   "custom_field":  {
+                                                        "_id":  "67f85348f9bbf3001bcd4531",
+                                                        "id":  "67f85348f9bbf3001bcd4531",
+                                                        "for":  "deal",
+                                                        "label":  "ID SHAREPOINT [FINANCEIRO]",
+                                                        "order":  86,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-04-10T20:24:56.028-03:00",
+                                                        "updated_at":  "2025-04-10T20:24:56.028-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "PENDENTE",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67f853fadc6b62001c2b548b",
+                                   "custom_field":  {
+                                                        "_id":  "67f853fadc6b62001c2b548b",
+                                                        "id":  "67f853fadc6b62001c2b548b",
+                                                        "for":  "deal",
+                                                        "label":  "STATUS [FINANCEIRO]",
+                                                        "order":  87,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "option",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-04-10T20:27:54.081-03:00",
+                                                        "updated_at":  "2025-08-31T22:51:13.297-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e401cdf4d2050020421a01",
+                                   "custom_field":  {
+                                                        "_id":  "67e401cdf4d2050020421a01",
+                                                        "id":  "67e401cdf4d2050020421a01",
+                                                        "for":  "deal",
+                                                        "label":  "Razão Social Cliente Principal [CADASTRO]",
+                                                        "order":  43,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T10:31:57.228-03:00",
+                                                        "updated_at":  "2025-08-31T22:41:47.771-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e401f7027eb2001bb3b674",
+                                   "custom_field":  {
+                                                        "_id":  "67e401f7027eb2001bb3b674",
+                                                        "id":  "67e401f7027eb2001bb3b674",
+                                                        "for":  "deal",
+                                                        "label":  "CNPJ / CPF Cliente Principal [CADASTRO]",
+                                                        "order":  44,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T10:32:39.195-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.589-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4021dd5ee6e001f799949",
+                                   "custom_field":  {
+                                                        "_id":  "67e4021dd5ee6e001f799949",
+                                                        "id":  "67e4021dd5ee6e001f799949",
+                                                        "for":  "deal",
+                                                        "label":  "Endereço Cliente Principal [CADASTRO]",
+                                                        "order":  45,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T10:33:17.239-03:00",
+                                                        "updated_at":  "2025-08-31T22:41:47.894-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e458eb9ef0840014c02cd8",
+                                   "custom_field":  {
+                                                        "_id":  "67e458eb9ef0840014c02cd8",
+                                                        "id":  "67e458eb9ef0840014c02cd8",
+                                                        "for":  "deal",
+                                                        "label":  "Qualificação dos Sócios (Nome, Posição (Sócio, consultor familiar, diretor etc), CPF) [CADASTRO] ",
+                                                        "order":  46,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T16:43:39.169-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.607-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45b44a3458a002846926a",
+                                   "custom_field":  {
+                                                        "_id":  "67e45b44a3458a002846926a",
+                                                        "id":  "67e45b44a3458a002846926a",
+                                                        "for":  "deal",
+                                                        "label":  "Cadastrar na consulta automatizada de novas demandas? (Favor informar os nomes, CNPJS de TODOS abaixo) [CADASTRO]",
+                                                        "order":  47,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T16:53:40.824-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.618-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "N/A",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45b6ee4f81200140c5caf",
+                                   "custom_field":  {
+                                                        "_id":  "67e45b6ee4f81200140c5caf",
+                                                        "id":  "67e45b6ee4f81200140c5caf",
+                                                        "for":  "deal",
+                                                        "label":  "Informações Adicionais [CADASTRO]",
+                                                        "order":  48,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T16:54:22.738-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:17.265-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "OFFICER S.A. DISTRIBUIDORA DE PRODUTOS DE TECNOLOGIA – EM RECUPERAÇÃO JUDICIAL",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45ec356e219001bf22405",
+                                   "custom_field":  {
+                                                        "_id":  "67e45ec356e219001bf22405",
+                                                        "id":  "67e45ec356e219001bf22405",
+                                                        "for":  "deal",
+                                                        "label":  "Razão Social para Faturamento [FINANCEIRO]",
+                                                        "order":  49,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:08:35.752-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.643-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "71.702.716/0001-89",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45ee7eaeefa001bf4fde7",
+                                   "custom_field":  {
+                                                        "_id":  "67e45ee7eaeefa001bf4fde7",
+                                                        "id":  "67e45ee7eaeefa001bf4fde7",
+                                                        "for":  "deal",
+                                                        "label":  "CPF/CNPJ para Faturamento [FINANCEIRO]",
+                                                        "order":  50,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:09:11.257-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.654-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "05/08/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45f0b7b8aa3001964faf2",
+                                   "custom_field":  {
+                                                        "_id":  "67e45f0b7b8aa3001964faf2",
+                                                        "id":  "67e45f0b7b8aa3001964faf2",
+                                                        "for":  "deal",
+                                                        "label":  "Início da Vigência do Contrato [FINANCEIRO]",
+                                                        "order":  51,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:09:47.138-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.663-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "12/08/2025",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45f5c82a07200165a380f",
+                                   "custom_field":  {
+                                                        "_id":  "67e45f5c82a07200165a380f",
+                                                        "id":  "67e45f5c82a07200165a380f",
+                                                        "for":  "deal",
+                                                        "label":  "Primeiro Faturamento [FINANCEIRO]",
+                                                        "order":  52,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "date",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:11:08.458-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:18.456-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Luciano",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45fc55a360800145002b6",
+                                   "custom_field":  {
+                                                        "_id":  "67e45fc55a360800145002b6",
+                                                        "id":  "67e45fc55a360800145002b6",
+                                                        "for":  "deal",
+                                                        "label":  "Responsável Financeiro do Cliente [FINANCEIRO]",
+                                                        "order":  53,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:12:53.164-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.686-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Sócio",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e45feeaec6d0001bc66d33",
+                                   "custom_field":  {
+                                                        "_id":  "67e45feeaec6d0001bc66d33",
+                                                        "id":  "67e45feeaec6d0001bc66d33",
+                                                        "for":  "deal",
+                                                        "label":  "Posição do Responsável (Sócio, consultor, financeiro...) [FINANCEIRO]",
+                                                        "order":  54,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:13:34.773-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:18.700-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "luciano.kubrusly@officer.com.br",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4603533c04f0014cd7b08",
+                                   "custom_field":  {
+                                                        "_id":  "67e4603533c04f0014cd7b08",
+                                                        "id":  "67e4603533c04f0014cd7b08",
+                                                        "for":  "deal",
+                                                        "label":  "E-mail Responsável Financeiro do Cliente [FINANCEIRO]",
+                                                        "order":  55,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:14:45.276-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:18.828-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "+55 11 97359-4488",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4606c2cb421001cd1ffc7",
+                                   "custom_field":  {
+                                                        "_id":  "67e4606c2cb421001cd1ffc7",
+                                                        "id":  "67e4606c2cb421001cd1ffc7",
+                                                        "for":  "deal",
+                                                        "label":  "Telefone Responsável Financeiro do Cliente [FINANCEIRO]",
+                                                        "order":  56,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:15:40.910-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.712-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "0",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e460a565d5c100273a4de0",
+                                   "custom_field":  {
+                                                        "_id":  "67e460a565d5c100273a4de0",
+                                                        "id":  "67e460a565d5c100273a4de0",
+                                                        "for":  "deal",
+                                                        "label":  "Repasse acordado % [FINANCEIRO]",
+                                                        "order":  57,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:16:37.935-03:00",
+                                                        "updated_at":  "2025-07-17T15:22:48.723-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "0",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e46349a3d5710027ae9af4",
+                                   "custom_field":  {
+                                                        "_id":  "67e46349a3d5710027ae9af4",
+                                                        "id":  "67e46349a3d5710027ae9af4",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR R$ (Reestruturação e Insolvência) - [FINANCEIRO] ",
+                                                        "order":  68,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:27:53.584-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:21.288-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "75",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e463adcde9330014de91f8",
+                                   "custom_field":  {
+                                                        "_id":  "67e463adcde9330014de91f8",
+                                                        "id":  "67e463adcde9330014de91f8",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR R$  (Cível) - [FINANCEIRO] ",
+                                                        "order":  71,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:29:33.509-03:00",
+                                                        "updated_at":  "2025-04-10T22:27:10.786-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "0",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4644f7d1a15001b711d25",
+                                   "custom_field":  {
+                                                        "_id":  "67e4644f7d1a15001b711d25",
+                                                        "id":  "67e4644f7d1a15001b711d25",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR  R$  (Trabalhista) - [FINANCEIRO] ",
+                                                        "order":  69,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:32:15.766-03:00",
+                                                        "updated_at":  "2025-04-10T22:27:10.802-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "0",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e464eee0df0a00273da0f6",
+                                   "custom_field":  {
+                                                        "_id":  "67e464eee0df0a00273da0f6",
+                                                        "id":  "67e464eee0df0a00273da0f6",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR R$ (Tributário) - [FINANCEIRO] ",
+                                                        "order":  74,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:34:54.358-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:21.934-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "25",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4655dd554f5001b308814",
+                                   "custom_field":  {
+                                                        "_id":  "67e4655dd554f5001b308814",
+                                                        "id":  "67e4655dd554f5001b308814",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR R$ (Contratos / Societário) - [FINANCEIRO] ",
+                                                        "order":  76,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:36:45.235-03:00",
+                                                        "updated_at":  "2025-03-26T17:36:45.235-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "0",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e465b908a911002771fb7b",
+                                   "custom_field":  {
+                                                        "_id":  "67e465b908a911002771fb7b",
+                                                        "id":  "67e465b908a911002771fb7b",
+                                                        "for":  "deal",
+                                                        "label":  "RATEIO - VALOR R$ (ADD) - [FINANCEIRO] ",
+                                                        "order":  78,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:38:17.285-03:00",
+                                                        "updated_at":  "2025-03-26T17:38:17.285-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "IPCA",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e466384fe6650014fd7632",
+                                   "custom_field":  {
+                                                        "_id":  "67e466384fe6650014fd7632",
+                                                        "id":  "67e466384fe6650014fd7632",
+                                                        "for":  "deal",
+                                                        "label":  "Índice de Reajuste - [FINANCEIRO]",
+                                                        "order":  81,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:40:24.967-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:22.590-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "12 MESES",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e4666733c04f001bcd831a",
+                                   "custom_field":  {
+                                                        "_id":  "67e4666733c04f001bcd831a",
+                                                        "id":  "67e4666733c04f001bcd831a",
+                                                        "for":  "deal",
+                                                        "label":  "Periodicidade do Reajuste - [FINANCEIRO]",
+                                                        "order":  82,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:41:11.658-03:00",
+                                                        "updated_at":  "2025-03-28T12:44:19.480-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "NESSE CASO, ESSE RATEIO SERVIRÁ APENAS PARA O PROCEDIMENTO SPOT QUE FOI ACRESCENTADO NO ESCOPO CONTRATUAL, NÃO HAVENDO MODIFICAÇÃO EM RELAÇÃO AO RATEIO DOS DEMAIS VALORES PAGOS PELA EMPRESA.",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67e466a21e9fef0028a6648d",
+                                   "custom_field":  {
+                                                        "_id":  "67e466a21e9fef0028a6648d",
+                                                        "id":  "67e466a21e9fef0028a6648d",
+                                                        "for":  "deal",
+                                                        "label":  "Observações - [FINANCEIRO]",
+                                                        "order":  79,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-03-26T17:42:10.156-03:00",
+                                                        "updated_at":  "2025-08-31T22:42:22.720-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "Equipe de Contratos",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "6866bfdc59e41a001717297f",
+                                   "custom_field":  {
+                                                        "_id":  "6866bfdc59e41a001717297f",
+                                                        "id":  "6866bfdc59e41a001717297f",
+                                                        "for":  "deal",
+                                                        "label":  "Responsável pela Elaboração [CE]",
+                                                        "order":  41,
+                                                        "allow_new":  false,
+                                                        "required":  true,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  true,
+                                                        "created_at":  "2025-07-03T14:37:32.531-03:00",
+                                                        "updated_at":  "2025-09-01T01:03:44.206-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "491",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67f41356b3f0b4001fac517b",
+                                   "custom_field":  {
+                                                        "_id":  "67f41356b3f0b4001fac517b",
+                                                        "id":  "67f41356b3f0b4001fac517b",
+                                                        "for":  "deal",
+                                                        "label":  "ID SHAREPOINT",
+                                                        "order":  83,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  false,
+                                                        "created_at":  "2025-04-07T15:03:02.054-03:00",
+                                                        "updated_at":  "2025-04-07T15:03:02.054-03:00"
+                                                    }
+                               },
+                               {
+                                   "value":  "",
+                                   "created_at":  null,
+                                   "updated_at":  null,
+                                   "custom_field_id":  "67c893317030e9002126dc93",
+                                   "custom_field":  {
+                                                        "_id":  "67c893317030e9002126dc93",
+                                                        "id":  "67c893317030e9002126dc93",
+                                                        "for":  "deal",
+                                                        "label":  "Haverá Due Diligence?",
+                                                        "order":  34,
+                                                        "allow_new":  false,
+                                                        "required":  false,
+                                                        "type":  "text",
+                                                        "unique":  false,
+                                                        "visible":  false,
+                                                        "created_at":  "2025-03-05T15:08:49.390-03:00",
+                                                        "updated_at":  "2025-08-31T22:30:35.154-03:00"
+                                                    }
+                               }
+                           ],
+    "deal_products":  [
+
+                      ]
+}

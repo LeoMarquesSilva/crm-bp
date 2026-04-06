@@ -60,24 +60,27 @@ import { DashboardSection } from '@/components/dashboard/DashboardSection'
 import { AiAssistant } from '@/components/ai/AiAssistant'
 import { DashboardTabBar } from '@/pages/analise/DashboardTabBar'
 import { MotivosPerdaSection } from '@/pages/analise/MotivosPerdaSection'
-import type { DashboardTabId } from '@/pages/analise/types'
+import { FinanceiroSection } from '@/pages/analise/FinanceiroSection'
+import { computeFinanceAreaAggregation } from '@/pages/analise/financeiroMetrics'
+import type {
+  DashboardTabId,
+  FinanceiroAreaCard,
+  FinanceiroAreaLeadRow,
+  FinanceiroAreaMonthlyRow,
+  FinanceiroLeadMeta,
+  FinanceiroMonthlyItem,
+  FinanceiroSyncReport,
+  FinanceiroSummary,
+  FinanceiroValidationIssueType,
+  FinanceiroValidationRow,
+  FinanceiroValidationSummary,
+} from '@/pages/analise/types'
+import ReactECharts from 'echarts-for-react'
 
 type AnalisePlanilhaProps = {
   activeTab?: DashboardTabId
   onTabChange?: (tab: DashboardTabId) => void
 }
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts'
 import { getTeamMember, getSolicitanteKey, getAreaByEmail } from '@/data/teamAvatars'
 import { supabase } from '@/lib/supabase'
 import { useCountUp } from '@/hooks/useCountUp'
@@ -85,6 +88,7 @@ import { useCountUp } from '@/hooks/useCountUp'
 /** Detalhe de lead sem área: nome do solicitante e nome do lead (para exibir no relatório). */
 type SemAreaDetalhe = { solicitanteNome: string; leadNome: string }
 import { cn } from '@/lib/utils'
+import { downloadRelatorioPosvendaEtapasXlsx, type PosvendaRelatorioLinha } from '@/lib/relatorioPosvendaEtapasXlsx'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API = (path: string) => `${API_BASE}/api${path}`
@@ -362,6 +366,170 @@ function filterByEtapas(rows: PlanilhaRow[], selectedEtapas: string[]): Planilha
   return rows.filter((r) => set.has((r.stage_name ?? '').trim()))
 }
 
+function normalizeFinanceText(v: string | null | undefined): string {
+  return String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function parseCurrencyLike(v: unknown): number {
+  if (typeof v === 'number' && !Number.isNaN(v)) return v
+  if (typeof v !== 'string') return 0
+  const raw = v.trim()
+  if (!raw) return 0
+  const numeric = raw.replace(/[^\d,.-]/g, '')
+  const cleaned = (() => {
+    if (numeric.includes(',')) {
+      return numeric.replace(/\./g, '').replace(',', '.')
+    }
+    if (/^\d{1,3}(\.\d{3})+$/.test(numeric)) {
+      return numeric.replace(/\./g, '')
+    }
+    return numeric
+  })()
+  const n = parseFloat(cleaned)
+  return Number.isNaN(n) ? 0 : n
+}
+
+function parseOptionalNumeric(v: unknown): { hasValue: boolean; valid: boolean; value: number } {
+  const raw = String(v ?? '').trim()
+  if (/^n\s*\/?\s*[af]$/i.test(raw)) return { hasValue: true, valid: true, value: 0 }
+  if (!raw) return { hasValue: false, valid: false, value: 0 }
+  const withoutCurrency = raw.replace(/R\$/gi, '')
+  // Reject descriptive text or formulas in numeric-only financial fields.
+  if (/[A-Za-z]/.test(withoutCurrency) || /[+*/]/.test(withoutCurrency)) {
+    return { hasValue: true, valid: false, value: 0 }
+  }
+  // Reject date-like prefixes concatenated with monetary values (e.g. "20.03 R$ 8.423,05").
+  if (/^\d{1,2}\.\d{2}\s*R\$/i.test(raw)) return { hasValue: true, valid: false, value: 0 }
+  const commaCount = (raw.match(/,/g) ?? []).length
+  // Field must represent a single numeric value. Multiple comma-separated segments
+  // (e.g. "20.03 R$ 8.423,05, 20.06 R$ 11.523,05") are considered invalid input.
+  if (commaCount > 1) return { hasValue: true, valid: false, value: 0 }
+  const numeric = raw.replace(/[^\d,.-]/g, '')
+  const cleaned = (() => {
+    if (numeric.includes(',')) {
+      return numeric.replace(/\./g, '').replace(',', '.')
+    }
+    if (/^\d{1,3}(\.\d{3})+$/.test(numeric)) {
+      return numeric.replace(/\./g, '')
+    }
+    return numeric
+  })()
+  if (!cleaned || cleaned === '-' || cleaned === ',' || cleaned === '.') {
+    return { hasValue: true, valid: false, value: 0 }
+  }
+  const n = parseFloat(cleaned)
+  if (Number.isNaN(n)) return { hasValue: true, valid: false, value: 0 }
+  return { hasValue: true, valid: true, value: n }
+}
+
+type YearMonthRef = { year: number; month: number; key: string }
+
+function toYearMonthKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, '0')}`
+}
+
+function parseFinanceYearMonth(v: string | null | undefined): YearMonthRef | null {
+  const raw = String(v ?? '').trim()
+  if (!raw) return null
+  const mmYyyy = raw.match(/^(\d{1,2})[/-](\d{4})$/)
+  if (mmYyyy) {
+    const month = Number(mmYyyy[1])
+    const year = Number(mmYyyy[2])
+    if (month >= 1 && month <= 12) return { year, month, key: toYearMonthKey(year, month) }
+  }
+  const ddMmYyyy = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+  if (ddMmYyyy) {
+    const month = Number(ddMmYyyy[2])
+    const year = Number(ddMmYyyy[3])
+    if (month >= 1 && month <= 12) return { year, month, key: toYearMonthKey(year, month) }
+  }
+  const yyyyMmDd = raw.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
+  if (yyyyMmDd) {
+    const year = Number(yyyyMmDd[1])
+    const month = Number(yyyyMmDd[2])
+    if (month >= 1 && month <= 12) return { year, month, key: toYearMonthKey(year, month) }
+  }
+  const onlyNumber = Number(raw)
+  if (!Number.isNaN(onlyNumber) && onlyNumber > 1000) {
+    const d = new Date((onlyNumber - 25569) * 86400 * 1000)
+    if (!Number.isNaN(d.getTime())) {
+      const year = d.getUTCFullYear()
+      const month = d.getUTCMonth() + 1
+      return { year, month, key: toYearMonthKey(year, month) }
+    }
+  }
+  return null
+}
+
+function isFinanceFunil(funil: string | null | undefined): boolean {
+  const norm = normalizeFinanceText(funil)
+  return norm.includes('pos venda') || norm.includes('inclusao no fluxo de faturamento')
+}
+
+function isFinanceStage(stage: string | null | undefined): boolean {
+  const norm = normalizeFinanceText(stage)
+  return (
+    norm.includes('inclusao no fluxo de faturamento') ||
+    norm.includes('inclusao no fluxo') ||
+    norm.includes('boas vindas ao cliente') ||
+    norm.includes('boas vindas')
+  )
+}
+
+type FinanceAreaKey = 'insolvencia' | 'civel' | 'trabalhista' | 'tributario' | 'contratos' | 'add'
+
+type FinanceAreaMapItem = {
+  key: FinanceAreaKey
+  label: string
+  valueKey: string
+  percentKey: string
+}
+
+const FINANCE_AREA_MAP: FinanceAreaMapItem[] = [
+  {
+    key: 'insolvencia',
+    label: 'Insolvência',
+    valueKey: 'rateio_valor_insolvencia_financeiro',
+    percentKey: 'rateio_porcentagem_insolvencia_financeiro',
+  },
+  {
+    key: 'civel',
+    label: 'Cível',
+    valueKey: 'rateio_valor_civel_financeiro',
+    percentKey: 'rateio_porcentagem_civel_financeiro',
+  },
+  {
+    key: 'trabalhista',
+    label: 'Trabalhista',
+    valueKey: 'rateio_valor_trabalhista_financeiro',
+    percentKey: 'rateio_porcentagem_trabalhista_financeiro',
+  },
+  {
+    key: 'tributario',
+    label: 'Tributário',
+    valueKey: 'rateio_valor_tributario_financeiro',
+    percentKey: 'rateio_porcentagem_tributario_financeiro',
+  },
+  {
+    key: 'contratos',
+    label: 'Contratos/Societário',
+    valueKey: 'rateio_valor_contratos_financeiro',
+    percentKey: 'rateio_porcentagem_contratos_financeiro',
+  },
+  {
+    key: 'add',
+    label: 'ADD',
+    valueKey: 'rateio_valor_add_financeiro',
+    percentKey: 'rateio_porcentagem_add_financeiro',
+  },
+]
+
 const COLORS_PIE = ['#14324f', '#d5b170', '#2d936c', '#6b7280', '#dc2626', '#7c3aed', '#0d9488']
 const TOP_N = 5
 const LISTA_LEADS_INICIAL = 15
@@ -408,8 +576,41 @@ const MESES_LABEL: Record<number, string> = {
   7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro',
 }
 
-/** Cores para o donut por área — paleta suave, destaque âmbar (referência UX). */
-const CORES_POR_AREA = ['#d97706', '#0d9488', '#4f46e5', '#64748b', '#059669', '#7c3aed', '#0369a1', '#b45309', '#0f766e', '#6b21a8']
+const AREA_COLOR_FALLBACK = ['#d97706', '#0d9488', '#4f46e5', '#64748b', '#059669', '#7c3aed', '#0369a1', '#b45309', '#0f766e', '#6b21a8']
+const AREA_COLOR_MAP: Record<string, string> = {
+  insolvencia: '#16a34a',
+  civel: '#2563eb',
+  trabalhista: '#f59e0b',
+  tributario: '#7c3aed',
+  contratos: '#14b8a6',
+  societario: '#14b8a6',
+  socio: '#16a34a',
+  distressed: '#64748b',
+  reestruturacao: '#0f766e',
+  operacoes: '#0369a1',
+  sem_area: '#6b7280',
+}
+
+function normalizeAreaKey(areaName: string): string {
+  const normalized = String(areaName ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (normalized.includes('sem area')) return 'sem_area'
+  if (normalized.includes('societario') || normalized.includes('contrato')) return 'societario'
+  if (normalized.includes('socio')) return 'socio'
+  if (normalized.includes('distressed')) return 'distressed'
+  if (normalized.includes('reestruturacao')) return 'reestruturacao'
+  if (normalized.includes('operac')) return 'operacoes'
+  if (normalized.includes('civel')) return 'civel'
+  if (normalized.includes('trabalh')) return 'trabalhista'
+  if (normalized.includes('tribut')) return 'tributario'
+  return normalized.replace(/\s+/g, '_')
+}
+
+function getAreaChartColor(areaName: string, index: number): string {
+  return AREA_COLOR_MAP[normalizeAreaKey(areaName)] ?? AREA_COLOR_FALLBACK[index % AREA_COLOR_FALLBACK.length]
+}
 
 /** Etapas que a API ignora (não entram na análise). Deve estar em sync com api/validar-sheets.js DISREGARD_STAGE_NAMES */
 const STAGES_IGNORADOS = [
@@ -562,8 +763,15 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ApiResponse | null>(null)
+  const [financeiroSyncLoading, setFinanceiroSyncLoading] = useState(false)
+  const [financeiroSyncMode, setFinanceiroSyncMode] = useState<'check' | 'apply' | null>(null)
+  const [financeiroSyncError, setFinanceiroSyncError] = useState<string | null>(null)
+  const [financeiroSyncCheckedAt, setFinanceiroSyncCheckedAt] = useState<string | null>(null)
+  const [financeiroSyncReport, setFinanceiroSyncReport] = useState<FinanceiroSyncReport | null>(null)
   const [filterAno, setFilterAno] = useState<number | ''>('')
   const [filterMes, setFilterMes] = useState<number | ''>('')
+  const [financeiroFilterAno, setFinanceiroFilterAno] = useState<number | ''>('')
+  const [financeiroFilterMes, setFinanceiroFilterMes] = useState<number | ''>('')
   const [filterFunil, setFilterFunil] = useState<string>('')
   const [filterSolicitante, setFilterSolicitante] = useState<string>('')
   const [filterArea, setFilterArea] = useState<string>('')
@@ -629,7 +837,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       }
     },
     onError: () => setError('Não foi possível conectar com o Google. Tente novamente.'),
-    scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/drive.metadata.readonly',
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.metadata.readonly',
   })
 
   const loadPlanilha = useCallback(async () => {
@@ -671,6 +879,69 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       setLoading(false)
     }
   }, [accessToken])
+
+  const runFinanceiroSync = useCallback(async (dryRun: boolean): Promise<FinanceiroSyncReport | null> => {
+    if (!accessToken || !PLANILHA_ID.trim()) {
+      const msg = accessToken
+        ? 'Configure VITE_PLANILHA_ID em .env/.env.local para sincronizar o financeiro.'
+        : 'Conecte-se com o Google para sincronizar o financeiro.'
+      setFinanceiroSyncError(msg)
+      return null
+    }
+
+    setFinanceiroSyncLoading(true)
+    setFinanceiroSyncMode(dryRun ? 'check' : 'apply')
+    setFinanceiroSyncError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/sync-financeiro-rd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken,
+          spreadsheetId: PLANILHA_ID.trim(),
+          sheetName: (PLANILHA_ABA || '').trim() || undefined,
+          dryRun,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        const msg = json?.message || json?.error || 'Falha ao sincronizar financeiro com RD.'
+        setFinanceiroSyncError(msg)
+        return null
+      }
+
+      setFinanceiroSyncReport(json as FinanceiroSyncReport)
+      setFinanceiroSyncCheckedAt(new Date().toISOString())
+      return json as FinanceiroSyncReport
+    } catch {
+      setFinanceiroSyncError('Não foi possível validar sincronização com o RD agora.')
+      return null
+    } finally {
+      setFinanceiroSyncLoading(false)
+      setFinanceiroSyncMode(null)
+    }
+  }, [accessToken])
+
+  const handleFinanceiroSyncCheck = useCallback(async () => {
+    await runFinanceiroSync(true)
+  }, [runFinanceiroSync])
+
+  const handleFinanceiroSyncApply = useCallback(async () => {
+    const pendingUpdates = financeiroSyncReport?.stats?.updatesCount ?? 0
+    if (pendingUpdates <= 0) {
+      setFinanceiroSyncError('Não há divergências pendentes para aplicar.')
+      return
+    }
+    const ok = window.confirm(
+      `Foram encontradas ${pendingUpdates} célula(s) para atualizar no Sheets. Deseja aplicar agora?`,
+    )
+    if (!ok) return
+    const writeResult = await runFinanceiroSync(false)
+    if (writeResult) {
+      await runFinanceiroSync(true)
+      await loadPlanilha()
+    }
+  }, [financeiroSyncReport, loadPlanilha, runFinanceiroSync])
 
   useEffect(() => {
     if (accessToken && PLANILHA_ID.trim()) loadPlanilha()
@@ -777,6 +1048,452 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     return filterByEtapas(rows, selectedEtapas)
   }, [rawResults, filterFunil, filterSolicitante, filterArea, filterAno, filterMes, selectedEtapas])
 
+  // Base da aba Financeiro: reaproveita filtros globais de pessoa/área e aplica período próprio por primeiro faturamento.
+  const financeRowsScoped = useMemo(() => {
+    let rows = rawResults
+    if (filterSolicitante) rows = filterBySolicitante(rows, filterSolicitante, getSolicitanteKey)
+    if (filterArea) rows = filterByArea(rows, filterArea, getAreaByEmail)
+    return rows.filter((r) => isFinanceFunil(r.funil) && isFinanceStage(r.stage_name))
+  }, [rawResults, filterSolicitante, filterArea])
+
+  const financeAnosDisponiveis = useMemo(() => {
+    const set = new Set<number>()
+    financeRowsScoped.forEach((r) => {
+      const ym = parseFinanceYearMonth(r.planilha?.primeiro_faturamento_financeiro ?? '')
+      if (ym) set.add(ym.year)
+    })
+    return Array.from(set).sort((a, b) => b - a)
+  }, [financeRowsScoped])
+
+  const financeMesesDisponiveis = useMemo(() => {
+    if (!financeiroFilterAno) return []
+    const set = new Set<number>()
+    financeRowsScoped.forEach((r) => {
+      const ym = parseFinanceYearMonth(r.planilha?.primeiro_faturamento_financeiro ?? '')
+      if (!ym || ym.year !== financeiroFilterAno) return
+      set.add(ym.month)
+    })
+    return Array.from(set).sort((a, b) => a - b)
+  }, [financeRowsScoped, financeiroFilterAno])
+
+  useEffect(() => {
+    if (financeiroFilterAno && !financeAnosDisponiveis.includes(financeiroFilterAno)) {
+      setFinanceiroFilterAno('')
+      setFinanceiroFilterMes('')
+    }
+  }, [financeiroFilterAno, financeAnosDisponiveis])
+
+  useEffect(() => {
+    if (financeiroFilterMes && !financeMesesDisponiveis.includes(financeiroFilterMes)) {
+      setFinanceiroFilterMes('')
+    }
+  }, [financeiroFilterMes, financeMesesDisponiveis])
+
+  const financeBaseRows = useMemo(() => {
+    if (!financeiroFilterAno && !financeiroFilterMes) return financeRowsScoped
+    return financeRowsScoped.filter((r) => {
+      const ym = parseFinanceYearMonth(r.planilha?.primeiro_faturamento_financeiro ?? '')
+      if (!ym) return false
+      if (financeiroFilterAno && ym.year !== financeiroFilterAno) return false
+      if (financeiroFilterMes && ym.month !== financeiroFilterMes) return false
+      return true
+    })
+  }, [financeRowsScoped, financeiroFilterAno, financeiroFilterMes])
+
+  const {
+    financeiroSummary,
+    financeiroMonthlyData,
+    financeiroAreaCards,
+    financeiroAreaComparisonData,
+    financeiroAreaMonthlyRows,
+    financeiroAreaLeadRows,
+    financeiroValidationSummary,
+    financeiroValidationRows,
+  } = useMemo(() => {
+    const eligibleRows = financeBaseRows.filter((r) => isFinanceFunil(r.funil) && isFinanceStage(r.stage_name))
+    const monthMap = new Map<string, {
+      year: number
+      month: number
+      leadsComFaturamento: number
+      valorContratoAnual: number
+      valorPrimeiroFaturamento: number
+    }>()
+    const areaMonthMap = new Map<string, {
+      monthKey: string
+      monthLabel: string
+      area: string
+      participacoes: number
+      leadRefs: Set<string>
+      valorAnual: number
+      valorMensal: number
+      percentualSoma: number
+      percentualCount: number
+    }>()
+    const areaTotalsMap = new Map<FinanceAreaKey, {
+      area: string
+      areaKey: FinanceAreaKey
+      participacoes: number
+      leadRefs: Set<string>
+      valorAnual: number
+      valorMensal: number
+      percentualSoma: number
+      percentualCount: number
+    }>()
+    const areaLeadRows: FinanceiroAreaLeadRow[] = []
+    const entradaMap = new Map<string, number>()
+    let totalValorContratoAnual = 0
+    let totalValorPrimeiroFaturamento = 0
+    let leadsComPrimeiroFaturamento = 0
+    let leadsComContratoAnual = 0
+    let leadsComValorPrimeiroFaturamento = 0
+    let sumPrimeiroFaturamentoPreenchido = 0
+    const validationRows: FinanceiroValidationRow[] = []
+    const errorByType = new Map<string, number>()
+
+    const BASE_FIELD_LABELS: Record<string, string> = {
+      valor_contrato_anual_financeiro: 'Valor do contrato anual',
+      valor_primeiro_faturamento_financeiro: 'Valor do primeiro faturamento',
+      primeiro_faturamento_financeiro: 'Data do primeiro faturamento',
+    }
+
+    FINANCE_AREA_MAP.forEach((a) => {
+      areaTotalsMap.set(a.key, {
+        area: a.label,
+        areaKey: a.key,
+        participacoes: 0,
+        leadRefs: new Set<string>(),
+        valorAnual: 0,
+        valorMensal: 0,
+        percentualSoma: 0,
+        percentualCount: 0,
+      })
+    })
+
+    eligibleRows.forEach((r) => {
+      const planilha = r.planilha ?? {}
+      const valorContratoRaw = planilha.valor_contrato_anual_financeiro ?? ''
+      const valorPrimeiroRaw = planilha.valor_primeiro_faturamento_financeiro ?? ''
+      const primeiroFaturamentoRaw = planilha.primeiro_faturamento_financeiro ?? ''
+      const contratoNum = parseOptionalNumeric(valorContratoRaw)
+      const primeiroFatNum = parseOptionalNumeric(valorPrimeiroRaw)
+      const valorContratoAnual = contratoNum.valid ? contratoNum.value : 0
+      const valorPrimeiroFaturamento = primeiroFatNum.valid ? primeiroFatNum.value : 0
+      const createdYm = getYearMonthUTC(r.created_at_iso)
+      const faturamentoYm = parseFinanceYearMonth(primeiroFaturamentoRaw)
+      const leadRef = (r.nome_lead ?? r.razao_social ?? r.deal_id ?? '').trim() || `Linha ${r.rowIndex}`
+
+      const leadIssues: {
+        fieldKey: string
+        fieldLabel: string
+        areaLabel: string | null
+        type: FinanceiroValidationIssueType
+        message: string
+        currentValue: string
+      }[] = []
+      const addIssue = (args: {
+        fieldKey: string
+        fieldLabel: string
+        areaLabel?: string | null
+        type: FinanceiroValidationIssueType
+        currentValue?: string
+        message?: string
+      }) => {
+        const messageByType: Record<FinanceiroValidationIssueType, string> = {
+          obrigatorio: `${args.fieldLabel}: obrigatório`,
+          formato: `${args.fieldLabel}: formato inválido`,
+          faixa: `${args.fieldLabel}: fora da faixa permitida (0 a 100)`,
+          consistencia: `${args.fieldLabel}: inconsistência de preenchimento`,
+        }
+        const message = args.message ?? messageByType[args.type]
+        leadIssues.push({
+          fieldKey: args.fieldKey,
+          fieldLabel: args.fieldLabel,
+          areaLabel: args.areaLabel ?? null,
+          type: args.type,
+          message,
+          currentValue: String(args.currentValue ?? '').trim(),
+        })
+        errorByType.set(message, (errorByType.get(message) ?? 0) + 1)
+      }
+      if (!String(valorContratoRaw).trim()) {
+        addIssue({
+          fieldKey: 'valor_contrato_anual_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.valor_contrato_anual_financeiro,
+          type: 'obrigatorio',
+        })
+      } else if (!contratoNum.valid) {
+        addIssue({
+          fieldKey: 'valor_contrato_anual_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.valor_contrato_anual_financeiro,
+          type: 'formato',
+          currentValue: String(valorContratoRaw),
+        })
+      }
+      if (!String(valorPrimeiroRaw).trim()) {
+        addIssue({
+          fieldKey: 'valor_primeiro_faturamento_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.valor_primeiro_faturamento_financeiro,
+          type: 'obrigatorio',
+        })
+      } else if (!primeiroFatNum.valid) {
+        addIssue({
+          fieldKey: 'valor_primeiro_faturamento_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.valor_primeiro_faturamento_financeiro,
+          type: 'formato',
+          currentValue: String(valorPrimeiroRaw),
+        })
+      }
+      if (!String(primeiroFaturamentoRaw).trim()) {
+        addIssue({
+          fieldKey: 'primeiro_faturamento_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.primeiro_faturamento_financeiro,
+          type: 'obrigatorio',
+        })
+      } else if (!faturamentoYm) {
+        addIssue({
+          fieldKey: 'primeiro_faturamento_financeiro',
+          fieldLabel: BASE_FIELD_LABELS.primeiro_faturamento_financeiro,
+          type: 'formato',
+          currentValue: String(primeiroFaturamentoRaw),
+        })
+      }
+
+      totalValorContratoAnual += valorContratoAnual
+      totalValorPrimeiroFaturamento += valorPrimeiroFaturamento
+
+      if (contratoNum.valid) leadsComContratoAnual += 1
+      if (primeiroFatNum.valid) {
+        leadsComValorPrimeiroFaturamento += 1
+        sumPrimeiroFaturamentoPreenchido += valorPrimeiroFaturamento
+      }
+
+      if (createdYm) {
+        const key = toYearMonthKey(createdYm.year, createdYm.month)
+        entradaMap.set(key, (entradaMap.get(key) ?? 0) + 1)
+      }
+
+      FINANCE_AREA_MAP.forEach((areaDef) => {
+        const totals = areaTotalsMap.get(areaDef.key)
+        if (!totals) return
+        const rateioValor = parseOptionalNumeric(planilha[areaDef.valueKey])
+        const rateioPercent = parseOptionalNumeric(planilha[areaDef.percentKey])
+        if (rateioValor.hasValue && !rateioValor.valid) {
+          addIssue({
+            fieldKey: areaDef.valueKey,
+            fieldLabel: `Rateio valor (${areaDef.label})`,
+            areaLabel: areaDef.label,
+            type: 'formato',
+            currentValue: String(planilha[areaDef.valueKey] ?? ''),
+          })
+        }
+        if (rateioPercent.hasValue && !rateioPercent.valid) {
+          addIssue({
+            fieldKey: areaDef.percentKey,
+            fieldLabel: `Rateio percentual (${areaDef.label})`,
+            areaLabel: areaDef.label,
+            type: 'formato',
+            currentValue: String(planilha[areaDef.percentKey] ?? ''),
+          })
+        }
+        if (rateioPercent.valid && (rateioPercent.value < 0 || rateioPercent.value > 100)) {
+          addIssue({
+            fieldKey: areaDef.percentKey,
+            fieldLabel: `Rateio percentual (${areaDef.label})`,
+            areaLabel: areaDef.label,
+            type: 'faixa',
+            currentValue: String(planilha[areaDef.percentKey] ?? ''),
+          })
+        }
+        const areaAggregation = computeFinanceAreaAggregation({
+          areaLabel: areaDef.label,
+          rateioValor,
+          rateioPercent,
+          valorContratoAnual,
+          valorPrimeiroFaturamento,
+        })
+        if (!areaAggregation.shouldAggregate) return
+        if (areaAggregation.consistencyMessage) {
+          addIssue({
+            fieldKey: areaDef.valueKey,
+            fieldLabel: `Rateio valor (${areaDef.label})`,
+            areaLabel: areaDef.label,
+            type: 'consistencia',
+            message: areaAggregation.consistencyMessage,
+            currentValue: String(planilha[areaDef.percentKey] ?? ''),
+          })
+        }
+        const valorAnualArea = areaAggregation.valorAnualArea
+        const valorMensalArea = areaAggregation.valorMensalArea
+        const monthLabel = faturamentoYm ? `${MESES_LABEL[faturamentoYm.month] ?? faturamentoYm.month}/${faturamentoYm.year}` : null
+        areaLeadRows.push({
+          area: areaDef.label,
+          areaKey: areaDef.key,
+          leadRef,
+          rowIndex: r.rowIndex,
+          dealId: (r.deal_id ?? '').trim() || null,
+          monthKey: faturamentoYm?.key ?? null,
+          monthLabel,
+          percentualRateio: rateioPercent.valid ? areaAggregation.percentValue : null,
+          valorAnualArea,
+          valorMensalArea,
+          rateioValorRaw: String(planilha[areaDef.valueKey] ?? '').trim(),
+          rateioPercentRaw: String(planilha[areaDef.percentKey] ?? '').trim(),
+          consistencyMessage: areaAggregation.consistencyMessage,
+        })
+
+        totals.participacoes += 1
+        totals.leadRefs.add(leadRef)
+        totals.valorAnual += valorAnualArea
+        totals.valorMensal += valorMensalArea
+        if (rateioPercent.valid) {
+          totals.percentualSoma += areaAggregation.percentValue
+          totals.percentualCount += 1
+        }
+
+        if (faturamentoYm) {
+          const monthKey = `${faturamentoYm.key}_${areaDef.key}`
+          const row = areaMonthMap.get(monthKey) ?? {
+            monthKey: faturamentoYm.key,
+            monthLabel: `${MESES_LABEL[faturamentoYm.month] ?? faturamentoYm.month}/${faturamentoYm.year}`,
+            area: areaDef.label,
+            participacoes: 0,
+            leadRefs: new Set<string>(),
+            valorAnual: 0,
+            valorMensal: 0,
+            percentualSoma: 0,
+            percentualCount: 0,
+          }
+          row.participacoes += 1
+          row.leadRefs.add(leadRef)
+          row.valorAnual += valorAnualArea
+          row.valorMensal += valorMensalArea
+          if (rateioPercent.valid) {
+            row.percentualSoma += areaAggregation.percentValue
+            row.percentualCount += 1
+          }
+          areaMonthMap.set(monthKey, row)
+        }
+      })
+
+      const responsavelEmail = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const responsavelKey = responsavelEmail ? getSolicitanteKey(responsavelEmail) : '(sem e-mail)'
+      const responsavelInfo = responsavelEmail ? getTeamMember(responsavelEmail) : null
+      validationRows.push({
+        leadRef,
+        rowIndex: r.rowIndex,
+        dealId: (r.deal_id ?? '').trim() || null,
+        stageName: (r.stage_name ?? '').trim() || '—',
+        funil: (r.funil ?? '').trim() || '—',
+        responsavelKey,
+        responsavelNome: responsavelInfo?.name ?? (responsavelEmail || '(sem e-mail)'),
+        responsavelAvatar: responsavelInfo?.avatar ?? null,
+        issues: leadIssues,
+        status: leadIssues.length > 0 ? 'com_erro' : 'ok',
+      })
+
+      if (!faturamentoYm) return
+      if (!contratoNum.valid && !primeiroFatNum.valid) return
+      leadsComPrimeiroFaturamento += 1
+      const cur = monthMap.get(faturamentoYm.key) ?? {
+        year: faturamentoYm.year,
+        month: faturamentoYm.month,
+        leadsComFaturamento: 0,
+        valorContratoAnual: 0,
+        valorPrimeiroFaturamento: 0,
+      }
+      cur.leadsComFaturamento += 1
+      cur.valorContratoAnual += valorContratoAnual
+      cur.valorPrimeiroFaturamento += valorPrimeiroFaturamento
+      monthMap.set(faturamentoYm.key, cur)
+    })
+
+    const monthKeys = Array.from(new Set([...monthMap.keys(), ...entradaMap.keys()])).sort((a, b) => a.localeCompare(b))
+    const monthlyData: FinanceiroMonthlyItem[] = monthKeys.map((key) => {
+      const monthData = monthMap.get(key)
+      const [yearStr, monthStr] = key.split('-')
+      const month = Number(monthStr)
+      const year = Number(yearStr)
+      const leadsComFaturamento = monthData?.leadsComFaturamento ?? 0
+      const valorContratoAnual = monthData?.valorContratoAnual ?? 0
+      return {
+        monthKey: key,
+        monthLabel: `${MESES_LABEL[month] ?? month}/${year}`,
+        leadsComFaturamento,
+        leadsEntrada: entradaMap.get(key) ?? 0,
+        valorContratoAnual,
+        valorPrimeiroFaturamento: monthData?.valorPrimeiroFaturamento ?? 0,
+        ticketMedioAnual: leadsComFaturamento > 0 ? valorContratoAnual / leadsComFaturamento : 0,
+      }
+    })
+
+    const areaCards: FinanceiroAreaCard[] = Array.from(areaTotalsMap.values())
+      .map((r) => ({
+        area: r.area,
+        areaKey: r.areaKey,
+        participacoes: r.participacoes,
+        leadsUnicas: r.leadRefs.size,
+        valorAnual: r.valorAnual,
+        valorMensal: r.valorMensal,
+        percentualMedio: r.percentualCount > 0 ? r.percentualSoma / r.percentualCount : 0,
+      }))
+      .sort((a, b) => b.valorAnual - a.valorAnual)
+
+    const areaMonthlyRows: FinanceiroAreaMonthlyRow[] = Array.from(areaMonthMap.values())
+      .map((r) => ({
+        monthKey: r.monthKey,
+        monthLabel: r.monthLabel,
+        area: r.area,
+        participacoes: r.participacoes,
+        leadsUnicas: r.leadRefs.size,
+        valorAnual: r.valorAnual,
+        valorMensal: r.valorMensal,
+        percentualSoma: r.percentualSoma,
+        percentualCount: r.percentualCount,
+        percentualMedio: r.percentualCount > 0 ? r.percentualSoma / r.percentualCount : 0,
+      }))
+      .sort((a, b) => a.monthKey.localeCompare(b.monthKey) || a.area.localeCompare(b.area, 'pt-BR'))
+
+    const validationSummary: FinanceiroValidationSummary = {
+      totalLeadsValidadas: eligibleRows.length,
+      leadsComErro: validationRows.filter((item) => item.status === 'com_erro').length,
+      totalErros: validationRows.reduce((acc, item) => acc + item.issues.length, 0),
+      errosPorTipo: Array.from(errorByType.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count),
+    }
+
+    return {
+      financeiroSummary: {
+        totalLeadsElegiveis: eligibleRows.length,
+        leadsComPrimeiroFaturamento,
+        leadsSemPrimeiroFaturamento: Math.max(eligibleRows.length - leadsComPrimeiroFaturamento, 0),
+        leadsComContratoAnual,
+        leadsComValorPrimeiroFaturamento,
+        totalValorContratoAnual,
+        totalValorPrimeiroFaturamento,
+        ticketMedioAnual: leadsComContratoAnual > 0 ? totalValorContratoAnual / leadsComContratoAnual : 0,
+        mediaPrimeiroFaturamento:
+          leadsComValorPrimeiroFaturamento > 0 ? sumPrimeiroFaturamentoPreenchido / leadsComValorPrimeiroFaturamento : 0,
+      },
+      financeiroMonthlyData: monthlyData,
+      financeiroAreaCards: areaCards,
+      financeiroAreaComparisonData: areaCards,
+      financeiroAreaMonthlyRows: areaMonthlyRows,
+      financeiroAreaLeadRows: areaLeadRows.sort((a, b) => b.valorAnualArea - a.valorAnualArea || a.area.localeCompare(b.area, 'pt-BR')),
+      financeiroValidationSummary: validationSummary,
+      financeiroValidationRows: validationRows.sort((a, b) => a.rowIndex - b.rowIndex),
+    }
+  }, [financeBaseRows]) as {
+    financeiroSummary: FinanceiroSummary
+    financeiroMonthlyData: FinanceiroMonthlyItem[]
+    financeiroAreaCards: FinanceiroAreaCard[]
+    financeiroAreaComparisonData: FinanceiroAreaCard[]
+    financeiroAreaMonthlyRows: FinanceiroAreaMonthlyRow[]
+    financeiroAreaLeadRows: FinanceiroAreaLeadRow[]
+    financeiroValidationSummary: FinanceiroValidationSummary
+    financeiroValidationRows: FinanceiroValidationRow[]
+  }
+
   const resumo = useMemo(() => {
     const won = results.filter((r) => r.status === 'win').length
     const lost = results.filter((r) => r.status === 'lost').length
@@ -787,6 +1504,49 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     const lossRate = total > 0 ? Math.round((lost / total) * 100) : 0
     return { total, won, lost, ongoing, conversionRate, winRate, lossRate }
   }, [results])
+
+  const financeiroLeadMeta = useMemo(() => {
+    const map = new Map<string, FinanceiroLeadMeta>()
+    const pickFilled = (current: string | null, incoming: string | null): string | null => {
+      return incoming && incoming.trim() ? incoming : current
+    }
+    financeBaseRows
+      .filter((r) => isFinanceFunil(r.funil) && isFinanceStage(r.stage_name))
+      .forEach((r) => {
+        const dealId = (r.deal_id ?? '').trim()
+        if (!dealId) return
+        const planilha = r.planilha ?? {}
+        const existing = map.get(dealId) ?? null
+        const incoming: FinanceiroLeadMeta = {
+          leadRef: (r.nome_lead ?? r.razao_social ?? dealId).trim() || dealId,
+          dealId,
+          linkContrato: String(planilha.link_do_contrato ?? planilha.link_contrato ?? '').trim() || null,
+          linkProposta: String(planilha.link_da_proposta ?? planilha.link_proposta ?? '').trim() || null,
+          objetoContratoCc: String(
+            planilha.escopo_contratual_cadastro ??
+            planilha.objeto_contrato_cc ??
+            planilha.objeto_contrato ??
+            ''
+          ).trim() || null,
+          observacoesFinanceiro: String(planilha.observacoes_financeiro ?? '').trim() || null,
+          primeiroFaturamentoRaw: String(planilha.primeiro_faturamento_financeiro ?? '').trim() || null,
+          valorPrimeiroFaturamentoRaw: String(planilha.valor_primeiro_faturamento_financeiro ?? '').trim() || null,
+          valorContratoAnualRaw: String(planilha.valor_contrato_anual_financeiro ?? '').trim() || null,
+        }
+        map.set(dealId, {
+          leadRef: pickFilled(existing?.leadRef ?? null, incoming.leadRef) ?? dealId,
+          dealId,
+          linkContrato: pickFilled(existing?.linkContrato ?? null, incoming.linkContrato),
+          linkProposta: pickFilled(existing?.linkProposta ?? null, incoming.linkProposta),
+          objetoContratoCc: pickFilled(existing?.objetoContratoCc ?? null, incoming.objetoContratoCc),
+          observacoesFinanceiro: pickFilled(existing?.observacoesFinanceiro ?? null, incoming.observacoesFinanceiro),
+          primeiroFaturamentoRaw: pickFilled(existing?.primeiroFaturamentoRaw ?? null, incoming.primeiroFaturamentoRaw),
+          valorPrimeiroFaturamentoRaw: pickFilled(existing?.valorPrimeiroFaturamentoRaw ?? null, incoming.valorPrimeiroFaturamentoRaw),
+          valorContratoAnualRaw: pickFilled(existing?.valorContratoAnualRaw ?? null, incoming.valorContratoAnualRaw),
+        })
+      })
+    return map
+  }, [financeBaseRows])
 
   /** Resumo por área (para gráfico na Visão Geral). */
   const resumoPorAreaData = useMemo(() => {
@@ -811,6 +1571,83 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const countWinRate = useCountUp(resumo.winRate, { decimals: 0 })
   const totalPorArea = resumoPorAreaData.reduce((s, d) => s + d.value, 0)
   const countPorAreaTotal = useCountUp(totalPorArea)
+  const visaoGeralAreaPieOption = useMemo(() => {
+    return {
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: { name: string; value: number; percent: number }) => {
+          return `
+            <div style="min-width: 180px;">
+              <div style="font-weight:600; margin-bottom: 4px;">${params.name}</div>
+              <div>Leads: <b>${Number(params.value ?? 0)}</b></div>
+              <div>Participação: <b>${(params.percent ?? 0).toFixed(1)}%</b></div>
+            </div>
+          `
+        },
+      },
+      legend: {
+        type: 'scroll',
+        orient: 'vertical',
+        selectedMode: false,
+        right: 8,
+        top: 'middle',
+        icon: 'circle',
+        textStyle: {
+          fontSize: 12,
+          color: '#334155',
+        },
+      },
+      title: {
+        text: String(countPorAreaTotal),
+        subtext: 'leads',
+        left: '36%',
+        top: '43%',
+        textAlign: 'center',
+        textStyle: {
+          fontSize: 28,
+          fontWeight: 700,
+          color: '#111827',
+        },
+        subtextStyle: {
+          fontSize: 12,
+          color: '#6b7280',
+        },
+      },
+      series: [
+        {
+          name: 'Leads por área',
+          type: 'pie',
+          radius: ['44%', '76%'],
+          center: ['36%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: '#ffffff',
+            borderWidth: 2,
+          },
+          label: {
+            show: true,
+            formatter: '{b}: {d}%',
+            color: '#475569',
+            fontSize: 11,
+          },
+          labelLine: {
+            smooth: 0.2,
+            length: 8,
+            length2: 10,
+          },
+          emphasis: {
+            scale: true,
+            scaleSize: 6,
+          },
+          data: resumoPorAreaData.map((item, index) => ({
+            name: item.name,
+            value: item.value,
+            itemStyle: { color: getAreaChartColor(item.name, index) },
+          })),
+        },
+      ],
+    }
+  }, [countPorAreaTotal, resumoPorAreaData])
 
   const motivoPerdaData = useMemo(() => {
     const lostRows = results.filter((r) => r.status === 'lost')
@@ -1170,6 +2007,8 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   type ReportTypeOption = 'resumo' | 'area' | 'solicitante' | 'motivos' | 'motivos-area' | 'tipo-lead' | 'indicacao' | 'nome-indicacao' | 'perdidas-anotacao'
   const [reportType, setReportType] = useState<ReportTypeOption>('resumo')
   const [copyFeedback, setCopyFeedback] = useState(false)
+  const [posvendaExportLoading, setPosvendaExportLoading] = useState(false)
+  const [posvendaExportError, setPosvendaExportError] = useState<string | null>(null)
   const [showWppModal, setShowWppModal] = useState(false)
   const [wppDestinations, setWppDestinations] = useState<WppDestination[]>([])
   /** 'manual' = digitar número; senão = id do destino salvo */
@@ -1551,6 +2390,37 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     )
   }, [reportText])
 
+  const handleExportPosvendaEtapasExcel = useCallback(async () => {
+    setPosvendaExportLoading(true)
+    setPosvendaExportError(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/relatorio-posvenda-etapas`)
+      const data = (await res.json()) as {
+        ok?: boolean
+        error?: string
+        message?: string
+        linhas?: PosvendaRelatorioLinha[]
+        gerado_em?: string
+        meta?: { nota_dias?: string }
+      }
+      if (!res.ok) {
+        throw new Error(data.message || data.error || `Erro ${res.status}`)
+      }
+      if (!data.ok || !Array.isArray(data.linhas)) {
+        throw new Error(data.message || data.error || 'Resposta inválida da API')
+      }
+      downloadRelatorioPosvendaEtapasXlsx({
+        linhas: data.linhas,
+        gerado_em: data.gerado_em,
+        nota_dias: data.meta?.nota_dias,
+      })
+    } catch (e) {
+      setPosvendaExportError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPosvendaExportLoading(false)
+    }
+  }, [])
+
   const openWppModal = useCallback(() => {
     setWppMessage(reportText)
     setWppError(null)
@@ -1676,38 +2546,40 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       )}
 
       {/* Filtro geral (abaixo das tabs) */}
-      <div className="rounded-xl border border-gray-200/80 bg-white shadow-sm px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold text-gray-700">Filtro geral:</span>
-          <select id="filter-funil" value={filterFunil} onChange={(e) => setFilterFunil(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
-            <option value="">Todos os funis</option>
-            {funisDisponiveis.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <select id="filter-solicitante" value={filterSolicitante} onChange={(e) => setFilterSolicitante(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
-            <option value="">Todos solicitantes</option>
-            {solicitantesDisponiveis.map(({ key, nome }) => <option key={key} value={key}>{nome}</option>)}
-          </select>
-          <select id="filter-area" value={filterArea} onChange={(e) => setFilterArea(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
-            <option value="">Todas as áreas</option>
-            {areasDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-          <select id="filter-ano" value={filterAno} onChange={(e) => { setFilterAno(e.target.value ? Number(e.target.value) : ''); setFilterMes('') }} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
-            <option value="">Todos os anos</option>
-            {anosDisponiveis.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <select id="filter-mes" value={filterMes} onChange={(e) => setFilterMes(e.target.value ? Number(e.target.value) : '')} disabled={!filterAno} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50">
-            <option value="">Todos os meses</option>
-            {mesesDisponiveis.map((m) => <option key={m} value={m}>{MESES_LABEL[m] ?? m}</option>)}
-          </select>
-          {(filterAno || filterMes) && (
-            <span className="text-sm text-gray-500">Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[filterMes] ?? filterMes}` : ''}</span>
-          )}
-          <button type="button" onClick={clearMainFilters} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
-            <Eraser className="h-4 w-4" />
-            Remover filtros
-          </button>
+      {activeTab !== 'financeiro' && (
+        <div className="rounded-xl border border-gray-200/80 bg-white shadow-sm px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-gray-700">Filtro geral:</span>
+            <select id="filter-funil" value={filterFunil} onChange={(e) => setFilterFunil(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+              <option value="">Todos os funis</option>
+              {funisDisponiveis.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select id="filter-solicitante" value={filterSolicitante} onChange={(e) => setFilterSolicitante(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+              <option value="">Todos solicitantes</option>
+              {solicitantesDisponiveis.map(({ key, nome }) => <option key={key} value={key}>{nome}</option>)}
+            </select>
+            <select id="filter-area" value={filterArea} onChange={(e) => setFilterArea(e.target.value)} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+              <option value="">Todas as áreas</option>
+              {areasDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select id="filter-ano" value={filterAno} onChange={(e) => { setFilterAno(e.target.value ? Number(e.target.value) : ''); setFilterMes('') }} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+              <option value="">Todos os anos</option>
+              {anosDisponiveis.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select id="filter-mes" value={filterMes} onChange={(e) => setFilterMes(e.target.value ? Number(e.target.value) : '')} disabled={!filterAno} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50">
+              <option value="">Todos os meses</option>
+              {mesesDisponiveis.map((m) => <option key={m} value={m}>{MESES_LABEL[m] ?? m}</option>)}
+            </select>
+            {(filterAno || filterMes) && (
+              <span className="text-sm text-gray-500">Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[filterMes] ?? filterMes}` : ''}</span>
+            )}
+            <button type="button" onClick={clearMainFilters} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
+              <Eraser className="h-4 w-4" />
+              Remover filtros
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* === ABA VISÃO GERAL === */}
       {activeTab === 'visao-geral' && (
@@ -1810,14 +2682,14 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         fullWidth
       >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div className="rounded-2xl border border-sky-200/80 bg-white p-5 shadow-md hover:shadow-lg transition-shadow">
+        <div className="rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
-              <PieChartIcon className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+              <PieChartIcon className="h-4 w-4" />
             </div>
             <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-700">no período</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-gray-900 mt-3 tabular-nums">{countTotal}</p>
+          <p className="mt-3 text-2xl font-bold text-gray-900 tabular-nums">{countTotal}</p>
           <p className="text-sm text-gray-500 mt-0.5">Total de leads · Pipeline</p>
         </div>
         <button
@@ -1827,59 +2699,59 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
             setActiveTab('leads')
           }}
           className={cn(
-            'rounded-2xl border p-5 shadow-md text-left transition-all hover:shadow-lg',
+            'rounded-xl border p-4 shadow-sm text-left transition-all hover:shadow-md',
             (activeTab as DashboardTabId) === 'leads' && !selectedSolicitanteKey && resumo.won > 0
-              ? 'border-emerald-300 bg-emerald-50/80 ring-2 ring-emerald-200'
-              : 'border-emerald-200/80 bg-white hover:bg-emerald-50/30'
+              ? 'border-emerald-300 bg-emerald-50/70 ring-1 ring-emerald-200'
+              : 'border-gray-200 bg-white/95 hover:bg-emerald-50/40'
           )}
         >
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-              <TrendingUp className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+              <TrendingUp className="h-4 w-4" />
             </div>
             <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">ganhas</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-emerald-700 mt-3 tabular-nums">{countWon}</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-700 tabular-nums">{countWon}</p>
           <p className="text-sm text-gray-500 mt-0.5">Clique para ver lista</p>
         </button>
-        <div className="rounded-2xl border border-rose-200/80 bg-white p-5 shadow-md hover:shadow-lg transition-shadow">
+        <div className="rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-              <TrendingDown className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+              <TrendingDown className="h-4 w-4" />
             </div>
             <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">perdidas</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-rose-700 mt-3 tabular-nums">{countLost}</p>
+          <p className="mt-3 text-2xl font-bold text-rose-700 tabular-nums">{countLost}</p>
           <p className="text-sm text-gray-500 mt-0.5">Leads perdidas</p>
         </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-md hover:shadow-lg transition-shadow">
+        <div className="rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-              <MinusCircle className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <MinusCircle className="h-4 w-4" />
             </div>
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">ativo</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-gray-800 mt-3 tabular-nums">{countOngoing}</p>
+          <p className="mt-3 text-2xl font-bold text-gray-800 tabular-nums">{countOngoing}</p>
           <p className="text-sm text-gray-500 mt-0.5">Em andamento</p>
         </div>
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-md hover:shadow-lg transition-shadow">
+        <div className="rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
-              <Percent className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Percent className="h-4 w-4" />
             </div>
             <span className="rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">conversão</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-primary mt-3 tabular-nums">{countConversion}%</p>
-          <p className="text-sm text-gray-600 mt-0.5">Ganhas / Total</p>
+          <p className="mt-3 text-2xl font-bold text-primary tabular-nums">{countConversion}%</p>
+          <p className="text-sm text-gray-600 mt-0.5">Conversão total</p>
         </div>
-        <div className="rounded-2xl border border-post/30 bg-post/5 p-5 shadow-md hover:shadow-lg transition-shadow">
+        <div className="rounded-xl border border-gray-200 bg-white/95 p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-post/20 text-post">
-              <Target className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-post/20 text-post">
+              <Target className="h-4 w-4" />
             </div>
-            <span className="rounded-full bg-post/20 px-2.5 py-0.5 text-xs font-semibold text-post">win rate</span>
+            <span className="rounded-full bg-post/20 px-2.5 py-0.5 text-xs font-semibold text-post">Taxa de ganho</span>
           </div>
-          <p className="text-2xl lg:text-3xl font-bold text-post mt-3 tabular-nums">{countWinRate}%</p>
+          <p className="mt-3 text-2xl font-bold text-post tabular-nums">{countWinRate}%</p>
           <p className="text-sm text-gray-600 mt-0.5">Ganhas / (Ganhas + Perdidas)</p>
         </div>
       </div>
@@ -1894,69 +2766,18 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         {resumoPorAreaData.length === 0 ? (
           <p className="text-sm text-gray-500 py-8 text-center">Nenhum dado no período.</p>
         ) : (
-          <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-6 shadow-sm max-w-2xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-              {/* Donut com total no centro */}
-              <div className="relative w-[240px] h-[240px] flex-shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={resumoPorAreaData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={72}
-                      outerRadius={108}
-                      paddingAngle={3}
-                      dataKey="value"
-                      nameKey="name"
-                    >
-                      {resumoPorAreaData.map((_, i) => (
-                        <Cell key={i} fill={CORES_POR_AREA[i % CORES_POR_AREA.length]} stroke="#fff" strokeWidth={2} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number, name: string) => {
-                        const total = resumoPorAreaData.reduce((s, d) => s + d.value, 0)
-                        const pct = total > 0 ? ((Number(value) / total) * 100).toFixed(1) : '0'
-                        return [`${value} leads (${pct}%)`, name]
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-gray-900 tabular-nums">
-                    {countPorAreaTotal}
-                  </span>
-                  <span className="text-sm text-gray-500 mt-0.5">leads</span>
-                </div>
-              </div>
-              {/* Legenda ao lado do gráfico */}
-              <div className="space-y-2 flex-1 min-w-0 w-full sm:w-auto">
-              {resumoPorAreaData.map((d, i) => {
-                const total = resumoPorAreaData.reduce((s, x) => s + x.value, 0)
-                const pct = total > 0 ? ((d.value / total) * 100).toFixed(0) : '0'
-                const AreaIconLeg = d.name in AREA_ICONS ? AREA_ICONS[d.name] : null
-                return (
-                  <div
-                    key={d.name}
-                    className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white border border-gray-100 hover:border-gray-200 transition-colors"
-                  >
-                    <span
-                      className="flex-shrink-0 w-3 h-3 rounded-full"
-                      style={{ backgroundColor: CORES_POR_AREA[i % CORES_POR_AREA.length] }}
-                    />
-                    {AreaIconLeg && (
-                      <span className="flex-shrink-0 text-primary">
-                        <AreaIconLeg className="h-4 w-4" />
-                      </span>
-                    )}
-                    <span className="flex-1 text-sm font-medium text-gray-800 min-w-0">{d.name}</span>
-                    <span className="text-sm font-semibold text-gray-900 tabular-nums"><CountUpValue value={d.value} /></span>
-                    <span className="text-xs text-gray-500 tabular-nums w-8 text-right">({pct}%)</span>
-                  </div>
-                )
-              })}
-              </div>
+          <div className="rounded-2xl border border-gray-200 bg-gradient-to-b from-white to-gray-50/70 shadow-sm overflow-hidden">
+            <div className="h-[360px]">
+              <ReactECharts
+                option={visaoGeralAreaPieOption}
+                style={{ width: '100%', height: '100%' }}
+                opts={{ renderer: 'svg' }}
+              />
+            </div>
+            <div className="border-t border-gray-100 bg-white/80 px-4 py-3">
+              <p className="text-xs text-gray-500">
+                Total no período: <span className="font-semibold text-gray-700">{countPorAreaTotal}</span> leads.
+              </p>
             </div>
           </div>
         )}
@@ -1987,6 +2808,37 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         />
       </DashboardSection>
         </>
+      )}
+
+      {/* === ABA FINANCEIRO === */}
+      {activeTab === 'financeiro' && (
+        <FinanceiroSection
+          summary={financeiroSummary}
+          monthlyData={financeiroMonthlyData}
+          areaCards={financeiroAreaCards}
+          areaComparisonData={financeiroAreaComparisonData}
+          areaMonthlyRows={financeiroAreaMonthlyRows}
+          areaLeadRows={financeiroAreaLeadRows}
+          validationSummary={financeiroValidationSummary}
+          validationRows={financeiroValidationRows}
+          financeLeadMeta={financeiroLeadMeta}
+          financeYears={financeAnosDisponiveis}
+          financeMonths={financeMesesDisponiveis}
+          selectedFinanceYear={financeiroFilterAno}
+          selectedFinanceMonth={financeiroFilterMes}
+          onFinanceYearChange={(year) => {
+            setFinanceiroFilterAno(year)
+            if (year === '') setFinanceiroFilterMes('')
+          }}
+          onFinanceMonthChange={setFinanceiroFilterMes}
+          syncLoading={financeiroSyncLoading}
+          syncMode={financeiroSyncMode}
+          syncError={financeiroSyncError}
+          syncCheckedAt={financeiroSyncCheckedAt}
+          syncReport={financeiroSyncReport}
+          onCheckSync={handleFinanceiroSyncCheck}
+          onApplySync={handleFinanceiroSyncApply}
+        />
       )}
 
       {/* === ABA RELATÓRIOS === */}
@@ -2064,6 +2916,31 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         </div>
         {wppError && (
           <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{wppError}</div>
+        )}
+      </DashboardSection>
+
+      <DashboardSection
+        icon={<Building2 className="h-5 w-5" />}
+        title="Pós-venda: faturamento e boas-vindas"
+        description="Negociações abertas nas etapas Inclusão no fluxo de faturamento e Boas-vindas (RD). Ordenadas por dias desde a última atualização no CRM."
+        fullWidth
+      >
+        <p className="text-sm text-gray-600 mb-4">
+          O Excel inclui a planilha <span className="font-medium">Pós-venda</span> com os dados e a aba{' '}
+          <span className="font-medium">Observações</span> explicando o critério dos dias (referência: última alteração na negociação
+          no RD).
+        </p>
+        <button
+          type="button"
+          onClick={handleExportPosvendaEtapasExcel}
+          disabled={posvendaExportLoading}
+          className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          {posvendaExportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+          Gerar Excel
+        </button>
+        {posvendaExportError && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{posvendaExportError}</div>
         )}
       </DashboardSection>
         </>

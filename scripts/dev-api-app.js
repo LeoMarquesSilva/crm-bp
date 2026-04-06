@@ -9,6 +9,9 @@ import express from 'express'
 import handlerValidar from '../api/validar-sheets.js'
 import handlerWhatsapp from '../api/enviar-whatsapp.js'
 import handlerSyncAnotacoes from '../api/sync-anotacoes.js'
+import handlerSyncFinanceiroRd from '../api/sync-financeiro-rd.js'
+import handlerAuditarEtapa1RdSheets from '../api/auditar-etapa1-rd-sheets.js'
+import handlerRelatorioPosvendaEtapas from '../api/relatorio-posvenda-etapas.js'
 import handlerGoogleOAuth from '../api/google-oauth.js'
 import handlerGoogleOAuthRefresh from '../api/google-oauth-refresh.js'
 import handlerUploadGoogleDrive from '../api/upload-google-drive.js'
@@ -67,6 +70,9 @@ export function createDevApiApp() {
   app.all('/api/validar-sheets', (req, res) => handlerValidar(req, res))
   app.all('/api/enviar-whatsapp', (req, res) => handlerWhatsapp(req, res))
   app.all('/api/sync-anotacoes', (req, res) => handlerSyncAnotacoes(req, res))
+  app.all('/api/sync-financeiro-rd', (req, res) => handlerSyncFinanceiroRd(req, res))
+  app.all('/api/auditar-etapa1-rd-sheets', (req, res) => handlerAuditarEtapa1RdSheets(req, res))
+  app.all('/api/relatorio-posvenda-etapas', (req, res) => handlerRelatorioPosvendaEtapas(req, res))
   app.all('/api/google-oauth', (req, res) => handlerGoogleOAuth(req, res))
   app.all('/api/google-oauth-refresh', (req, res) => handlerGoogleOAuthRefresh(req, res))
   app.all('/api/upload-google-drive', (req, res) => handlerUploadGoogleDrive(req, res))
