@@ -60,7 +60,7 @@ const MESES_LABEL: Record<number, string> = {
 const MESES_LABEL_COMPLETO: Record<number, string> = {
   1: 'Janeiro',
   2: 'Fevereiro',
-  3: 'Marco',
+  3: 'Março',
   4: 'Abril',
   5: 'Maio',
   6: 'Junho',
@@ -1519,169 +1519,183 @@ export function FinanceiroSection({
       </DashboardSection>
 
       {selectedLeadModalHeader && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/45 p-3 sm:items-center sm:p-4">
-          <div className="flex w-full max-w-4xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-            <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{selectedLeadModalHeader.leadRef}</p>
-                <p className="text-xs text-gray-500">
-                  Deal: {selectedLeadModalHeader.dealId ?? '—'} · Etapa: {selectedLeadModalHeader.stageName || '—'}
-                </p>
+        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/50 p-3 sm:items-center sm:p-4">
+          <div className="flex w-full max-w-5xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start gap-3 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] uppercase tracking-wide text-gray-500">Detalhes do contrato fechado</p>
+                <p className="truncate text-base font-semibold text-gray-900">{selectedLeadModalHeader.leadRef}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5">Deal: {selectedLeadModalHeader.dealId ?? '—'}</span>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5">Etapa: {selectedLeadModalHeader.stageName || '—'}</span>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedLeadModalKey(null)}
-                className="ml-auto rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 Fechar
               </button>
             </div>
-            <div className="overflow-y-auto p-4">
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-                  <p className="text-[11px] text-gray-500 uppercase">Áreas</p>
-                  <p className="text-base font-bold text-gray-900">{intFormatter.format(selectedLeadModalHeader.areas)}</p>
+
+            <div className="overflow-y-auto bg-gray-50/60 p-4 sm:p-5">
+              <div className="space-y-4">
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className={`grid gap-2 ${rateioPieMode === 'anual' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Áreas participantes</p>
+                      <p className="text-base font-bold text-gray-900">{intFormatter.format(selectedLeadModalHeader.areas)}</p>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5">
+                      <p className="text-[11px] text-blue-700 uppercase">Total mensal</p>
+                      <p className="text-base font-bold text-blue-900">{formatBrl(selectedLeadModalHeader.valorMensal)}</p>
+                    </div>
+                    {rateioPieMode === 'anual' && (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+                        <p className="text-[11px] text-emerald-700 uppercase">Total anual</p>
+                        <p className="text-base font-bold text-emerald-900">{formatBrl(selectedLeadModalHeader.valorAnual)}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5">
-                  <p className="text-[11px] text-blue-700 uppercase">Total mensal</p>
-                  <p className="text-base font-bold text-blue-900">{formatBrl(selectedLeadModalHeader.valorMensal)}</p>
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <p className="mb-2 text-sm font-semibold text-gray-800">Links e escopo contratual</p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Link contrato</p>
+                      {selectedLeadMeta?.linkContrato ? (
+                        <a href={selectedLeadMeta.linkContrato} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">
+                          {selectedLeadMeta.linkContrato}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-gray-500">Não preenchido</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Link proposta</p>
+                      {selectedLeadMeta?.linkProposta ? (
+                        <a href={selectedLeadMeta.linkProposta} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">
+                          {selectedLeadMeta.linkProposta}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-gray-500">Não preenchido</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Negociação no RD</p>
+                      {selectedLeadModalHeader.dealId ? (
+                        <a
+                          href={`${RD_CRM_DEAL_URL}${selectedLeadModalHeader.dealId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-700 underline break-all"
+                        >
+                          {`${RD_CRM_DEAL_URL}${selectedLeadModalHeader.dealId}`}
+                        </a>
+                      ) : (
+                        <p className="text-xs text-gray-500">Deal não informado</p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-2.5 sm:col-span-2 lg:col-span-3">
+                      <p className="text-[11px] text-gray-500 uppercase">Objeto do Contrato [CC]</p>
+                      <p className="mt-0.5 text-xs text-gray-800 whitespace-pre-wrap">{selectedLeadMeta?.objetoContratoCc || 'Não preenchido'}</p>
+                    </div>
+                  </div>
                 </div>
-                {rateioPieMode === 'anual' && (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
-                    <p className="text-[11px] text-emerald-700 uppercase">Total anual</p>
-                    <p className="text-base font-bold text-emerald-900">{formatBrl(selectedLeadModalHeader.valorAnual)}</p>
+
+                {selectedLeadMeta?.observacoesFinanceiro && (
+                  <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                    <p className="text-sm font-semibold text-gray-800">Observações financeiras</p>
+                    <p className="mt-1 text-xs text-gray-700 whitespace-pre-wrap">{selectedLeadMeta.observacoesFinanceiro}</p>
                   </div>
                 )}
-              </div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-                  <p className="text-[11px] text-gray-500 uppercase">Link contrato</p>
-                  {selectedLeadMeta?.linkContrato ? (
-                    <a href={selectedLeadMeta.linkContrato} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">
-                      {selectedLeadMeta.linkContrato}
-                    </a>
-                  ) : (
-                    <p className="text-xs text-gray-500">Não preenchido</p>
-                  )}
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-                  <p className="text-[11px] text-gray-500 uppercase">Link proposta</p>
-                  {selectedLeadMeta?.linkProposta ? (
-                    <a href={selectedLeadMeta.linkProposta} target="_blank" rel="noreferrer" className="text-xs text-blue-700 underline break-all">
-                      {selectedLeadMeta.linkProposta}
-                    </a>
-                  ) : (
-                    <p className="text-xs text-gray-500">Não preenchido</p>
-                  )}
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-2.5 sm:col-span-2">
-                  <p className="text-[11px] text-gray-500 uppercase">Objeto do Contrato [CC]</p>
-                  <p className="text-xs text-gray-800 whitespace-pre-wrap">
-                    {selectedLeadMeta?.objetoContratoCc || 'Não preenchido'}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-2.5">
-                  <p className="text-[11px] text-gray-500 uppercase">Negociação no RD</p>
-                  {selectedLeadModalHeader.dealId ? (
-                    <a
-                      href={`${RD_CRM_DEAL_URL}${selectedLeadModalHeader.dealId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-blue-700 underline break-all"
-                    >
-                      {`${RD_CRM_DEAL_URL}${selectedLeadModalHeader.dealId}`}
-                    </a>
-                  ) : (
-                    <p className="text-xs text-gray-500">Deal não informado</p>
-                  )}
-                </div>
-              </div>
-              {selectedLeadMeta?.observacoesFinanceiro && (
-                <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-                  <p className="text-[11px] text-gray-500 uppercase">Observações financeiras</p>
-                  <p className="text-xs text-gray-700 whitespace-pre-wrap">{selectedLeadMeta.observacoesFinanceiro}</p>
-                </div>
-              )}
-              {selectedLeadTopAlerts.length > 0 && (
-                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2.5">
-                  <p className="text-[11px] font-semibold uppercase text-red-700">Alertas visuais (por que está zerando/não mostrando)</p>
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {selectedLeadTopAlerts.map((alert, idx) => (
-                      <span key={`top-alert-${idx}`} className="rounded-md border border-red-300 bg-white px-2 py-1 text-[11px] text-red-800">
-                        {alert}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="mt-3 overflow-auto rounded-xl border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Área</th>
-                      <th className="px-2.5 py-2 text-right font-semibold text-gray-600">% rateio</th>
-                      <th className="px-2.5 py-2 text-right font-semibold text-gray-600">Valor mensal</th>
-                      {rateioPieMode === 'anual' && (
-                        <th className="px-2.5 py-2 text-right font-semibold text-gray-600">Valor anual</th>
-                      )}
-                      <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Valor preenchido</th>
-                      <th className="px-2.5 py-2 text-left font-semibold text-gray-600">% preenchido</th>
-                      <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Alerta visual</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {selectedLeadModalRows.map((row) => {
-                      const areaAlerts = getAreaVisualAlerts(row, selectedLeadMeta, rateioPieMode)
-                      return (
-                      <tr key={`modal-${row.rowIndex}-${row.areaKey}`}>
-                        <td className="px-2.5 py-2 text-gray-700">
-                          <AreaBadge areaKey={row.areaKey} label={row.area} />
-                        </td>
-                        <td className="px-2.5 py-2 text-right tabular-nums">
-                          {row.percentualRateio == null ? '—' : formatPct(row.percentualRateio)}
-                        </td>
-                        <td className="px-2.5 py-2 text-right tabular-nums">{formatBrl(row.valorMensalArea)}</td>
-                        {rateioPieMode === 'anual' && (
-                          <td className="px-2.5 py-2 text-right tabular-nums">{formatBrl(row.valorAnualArea)}</td>
-                        )}
-                        <td className="px-2.5 py-2 text-gray-700">{row.rateioValorRaw || '—'}</td>
-                        <td className="px-2.5 py-2 text-gray-700">{row.rateioPercentRaw || '—'}</td>
-                        <td className="px-2.5 py-2 text-gray-700">
-                          {areaAlerts.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {areaAlerts.map((alert, idx) => (
-                                <span key={`area-alert-${row.areaKey}-${idx}`} className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-800">
-                                  {alert}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                      </tr>
-                    )})}
-                  </tbody>
-                </table>
-              </div>
 
-              <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-sm font-semibold text-gray-800">Preenchimento atual na planilha</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Este detalhe mostra apenas os dados já preenchidos na planilha para o lead selecionado.
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-                    <p className="text-[11px] text-gray-500 uppercase">Primeiro faturamento (planilha)</p>
-                    <p className="text-xs text-gray-800">{selectedLeadMeta?.primeiroFaturamentoRaw || 'Não preenchido'}</p>
+                {selectedLeadTopAlerts.length > 0 && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">Alertas visuais (por que está zerando/não mostrando)</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {selectedLeadTopAlerts.map((alert, idx) => (
+                        <span key={`top-alert-${idx}`} className="rounded-md border border-red-300 bg-white px-2 py-1 text-[11px] text-red-800">
+                          {alert}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-                    <p className="text-[11px] text-gray-500 uppercase">Valor 1º faturamento (planilha)</p>
-                    <p className="text-xs text-gray-800">{selectedLeadMeta?.valorPrimeiroFaturamentoRaw || 'Não preenchido'}</p>
+                )}
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <p className="mb-2 text-sm font-semibold text-gray-800">Detalhamento por área de rateio</p>
+                  <div className="overflow-auto rounded-xl border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200 text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Área</th>
+                          <th className="px-2.5 py-2 text-right font-semibold text-gray-600">% rateio</th>
+                          <th className="px-2.5 py-2 text-right font-semibold text-gray-600">Valor mensal</th>
+                          {rateioPieMode === 'anual' && (
+                            <th className="px-2.5 py-2 text-right font-semibold text-gray-600">Valor anual</th>
+                          )}
+                          <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Valor preenchido</th>
+                          <th className="px-2.5 py-2 text-left font-semibold text-gray-600">% preenchido</th>
+                          <th className="px-2.5 py-2 text-left font-semibold text-gray-600">Alerta visual</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {selectedLeadModalRows.map((row) => {
+                          const areaAlerts = getAreaVisualAlerts(row, selectedLeadMeta, rateioPieMode)
+                          return (
+                            <tr key={`modal-${row.rowIndex}-${row.areaKey}`}>
+                              <td className="px-2.5 py-2 text-gray-700">
+                                <AreaBadge areaKey={row.areaKey} label={row.area} />
+                              </td>
+                              <td className="px-2.5 py-2 text-right tabular-nums">
+                                {row.percentualRateio == null ? '—' : formatPct(row.percentualRateio)}
+                              </td>
+                              <td className="px-2.5 py-2 text-right tabular-nums">{formatBrl(row.valorMensalArea)}</td>
+                              {rateioPieMode === 'anual' && (
+                                <td className="px-2.5 py-2 text-right tabular-nums">{formatBrl(row.valorAnualArea)}</td>
+                              )}
+                              <td className="px-2.5 py-2 text-gray-700">{row.rateioValorRaw || '—'}</td>
+                              <td className="px-2.5 py-2 text-gray-700">{row.rateioPercentRaw || '—'}</td>
+                              <td className="px-2.5 py-2 text-gray-700">
+                                {areaAlerts.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {areaAlerts.map((alert, idx) => (
+                                      <span key={`area-alert-${row.areaKey}-${idx}`} className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] text-amber-800">
+                                        {alert}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
-                    <p className="text-[11px] text-gray-500 uppercase">Valor contrato anual (planilha)</p>
-                    <p className="text-xs text-gray-800">{selectedLeadMeta?.valorContratoAnualRaw || 'Não preenchido'}</p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <p className="text-sm font-semibold text-gray-800">Preenchimento atual na planilha</p>
+                  <p className="mt-1 text-xs text-gray-500">Mostra apenas os valores atualmente cadastrados na planilha para este contrato.</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Primeiro faturamento</p>
+                      <p className="text-xs text-gray-800">{selectedLeadMeta?.primeiroFaturamentoRaw || 'Não preenchido'}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Valor 1º faturamento</p>
+                      <p className="text-xs text-gray-800">{selectedLeadMeta?.valorPrimeiroFaturamentoRaw || 'Não preenchido'}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                      <p className="text-[11px] text-gray-500 uppercase">Valor contrato anual</p>
+                      <p className="text-xs text-gray-800">{selectedLeadMeta?.valorContratoAnualRaw || 'Não preenchido'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
