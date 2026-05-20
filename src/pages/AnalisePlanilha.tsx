@@ -322,6 +322,51 @@ function filterByAnoMes(rows: PlanilhaRow[], ano: number | '', mes: number | '')
   })
 }
 
+/** Filtro por intervalo de datas (data de criação). dataDe/dataAte em YYYY-MM-DD (input type="date"). */
+function filterByDateRange(rows: PlanilhaRow[], dataDe: string, dataAte: string): PlanilhaRow[] {
+  if (!dataDe && !dataAte) return rows
+  return rows.filter((r) => {
+    const raw = r.created_at_iso
+    if (!raw) return false
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return false
+    if (dataDe) {
+      const de = new Date(dataDe)
+      de.setHours(0, 0, 0, 0)
+      if (d < de) return false
+    }
+    if (dataAte) {
+      const ate = new Date(dataAte)
+      ate.setHours(23, 59, 59, 999)
+      if (d > ate) return false
+    }
+    return true
+  })
+}
+
+function formatDateInputBr(ymd: string): string {
+  const [y, m, d] = ymd.split('-')
+  if (!y || !m || !d) return ymd
+  return `${d}/${m}/${y}`
+}
+
+function getPeriodoFiltroLabel(
+  ano: number | '',
+  mes: number | '',
+  dataDe: string,
+  dataAte: string,
+  mesesLabel: Record<number, string>
+): string {
+  if (dataDe || dataAte) {
+    if (dataDe && dataAte) return `${formatDateInputBr(dataDe)} – ${formatDateInputBr(dataAte)}`
+    if (dataDe) return `a partir de ${formatDateInputBr(dataDe)}`
+    return `até ${formatDateInputBr(dataAte)}`
+  }
+  if (ano && mes) return `${mesesLabel[mes] ?? mes}/${ano}`
+  if (ano) return String(ano)
+  return 'todo o período'
+}
+
 function filterByFunil(rows: PlanilhaRow[], funil: string): PlanilhaRow[] {
   if (!funil) return rows
   return rows.filter((r) => (r.funil ?? '').trim() === funil)
@@ -770,6 +815,9 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const [financeiroSyncReport, setFinanceiroSyncReport] = useState<FinanceiroSyncReport | null>(null)
   const [filterAno, setFilterAno] = useState<number | ''>('')
   const [filterMes, setFilterMes] = useState<number | ''>('')
+  /** Período personalizado (data de criação); exclusivo com ano/mês. */
+  const [filterDataDe, setFilterDataDe] = useState('')
+  const [filterDataAte, setFilterDataAte] = useState('')
   const [financeiroFilterAno, setFinanceiroFilterAno] = useState<number | ''>('')
   const [financeiroFilterMes, setFinanceiroFilterMes] = useState<number | ''>('')
   const [filterFunil, setFilterFunil] = useState<string>('')
@@ -871,6 +919,8 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       setSelectedEtapas([])
       setFilterAno('')
       setFilterMes('')
+      setFilterDataDe('')
+      setFilterDataAte('')
       setSelectedSolicitanteKey(null)
       setSelectedLead(null)
     } catch (e) {
@@ -1044,9 +1094,13 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     let rows = filterByFunil(rawResults, filterFunil)
     if (filterSolicitante) rows = filterBySolicitante(rows, filterSolicitante, getSolicitanteKey)
     if (filterArea) rows = filterByArea(rows, filterArea, getAreaByEmail)
-    rows = filterByAnoMes(rows, filterAno, filterMes)
+    if (filterDataDe || filterDataAte) {
+      rows = filterByDateRange(rows, filterDataDe, filterDataAte)
+    } else {
+      rows = filterByAnoMes(rows, filterAno, filterMes)
+    }
     return filterByEtapas(rows, selectedEtapas)
-  }, [rawResults, filterFunil, filterSolicitante, filterArea, filterAno, filterMes, selectedEtapas])
+  }, [rawResults, filterFunil, filterSolicitante, filterArea, filterAno, filterMes, filterDataDe, filterDataAte, selectedEtapas])
 
   // Base da aba Financeiro: reaproveita filtros globais de pessoa/área e aplica período próprio por primeiro faturamento.
   const financeRowsScoped = useMemo(() => {
@@ -2004,7 +2058,17 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     })
   }, [wonLeads, selectedSolicitanteKey])
 
-  type ReportTypeOption = 'resumo' | 'area' | 'solicitante' | 'motivos' | 'motivos-area' | 'tipo-lead' | 'indicacao' | 'nome-indicacao' | 'perdidas-anotacao'
+  type ReportTypeOption =
+    | 'resumo'
+    | 'area'
+    | 'solicitante'
+    | 'motivos'
+    | 'motivos-area'
+    | 'tipo-lead'
+    | 'indicacao'
+    | 'nome-indicacao'
+    | 'perdidas-anotacao'
+    | 'lista-completa'
   const [reportType, setReportType] = useState<ReportTypeOption>('resumo')
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [posvendaExportLoading, setPosvendaExportLoading] = useState(false)
@@ -2039,10 +2103,18 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const clearMainFilters = useCallback(() => {
     setFilterAno('')
     setFilterMes('')
+    setFilterDataDe('')
+    setFilterDataAte('')
     setFilterFunil('')
     setFilterSolicitante('')
     setFilterArea('')
   }, [])
+
+  const periodoFiltroAtivo = useMemo(
+    () => getPeriodoFiltroLabel(filterAno, filterMes, filterDataDe, filterDataAte, MESES_LABEL),
+    [filterAno, filterMes, filterDataDe, filterDataAte]
+  )
+  const hasPeriodoFiltro = !!(filterAno || filterMes || filterDataDe || filterDataAte)
 
   useEffect(() => {
     const list = loadWppDestinations()
@@ -2140,12 +2212,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
 
   /** Texto do relatório conforme tipo. Formato otimizado para WhatsApp (emojis, seções, legível no celular). */
   const reportText = useMemo(() => {
-    const periodo =
-      filterAno && filterMes
-        ? `${MESES_LABEL[filterMes] ?? filterMes}/${filterAno}`
-        : filterAno
-          ? `${filterAno}`
-          : 'todo o período'
+    const periodo = getPeriodoFiltroLabel(filterAno, filterMes, filterDataDe, filterDataAte, MESES_LABEL)
     const titulo = `📊 *Relatório de leads*\n${periodo}${filterFunil ? ` · ${filterFunil}` : ''}\n`
 
     if (reportType === 'resumo') {
@@ -2263,11 +2330,39 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
           : ''
       return titulo + `\n📝 *Perdidas com anotação do motivo*\n\n` + (linhas || 'Nenhuma lead perdida com anotação no período.') + rodape
     }
+    if (reportType === 'lista-completa') {
+      const leadNome = (r: PlanilhaRow) =>
+        (r.nome_lead ?? r.razao_social ?? r.id_registro ?? `Linha ${r.rowIndex}`)?.toString().trim() ||
+        `Linha ${r.rowIndex}`
+      const sortNomes = (nomes: string[]) => nomes.sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      const fmtSecao = (nomes: string[]) =>
+        nomes.length ? sortNomes(nomes).map((n) => `• ${n}`).join('\n') : '_Nenhuma_'
+
+      const ganhas = results.filter((r) => r.status === 'win').map(leadNome)
+      const perdidas = results.filter((r) => r.status === 'lost').map(leadNome)
+      const andamento = results
+        .filter((r) => r.status !== 'win' && r.status !== 'lost')
+        .map(leadNome)
+
+      return (
+        titulo +
+        `\n📋 *Lista completa de leads*\n` +
+        `_Total: ${resumo.total} leads (✅${resumo.won} ❌${resumo.lost} ⏳${resumo.ongoing})_\n\n` +
+        `✅ *Ganhas (${ganhas.length})*\n` +
+        fmtSecao(ganhas) +
+        `\n\n❌ *Perdidas (${perdidas.length})*\n` +
+        fmtSecao(perdidas) +
+        `\n\n⏳ *Em andamento (${andamento.length})*\n` +
+        fmtSecao(andamento)
+      )
+    }
     return titulo + 'Selecione um tipo de relatório.'
   }, [
     reportType,
     filterAno,
     filterMes,
+    filterDataDe,
+    filterDataAte,
     filterFunil,
     resumo,
     results,
@@ -2372,13 +2467,11 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
 
   const aiPeriodLabel = useMemo(() => {
     const p =
-      filterAno && filterMes
-        ? `${MESES_LABEL[filterMes] ?? filterMes}/${filterAno}`
-        : filterAno
-          ? String(filterAno)
-          : 'Todo o período'
+      filterDataDe || filterDataAte || filterAno || filterMes
+        ? periodoFiltroAtivo.charAt(0).toUpperCase() + periodoFiltroAtivo.slice(1)
+        : 'Todo o período'
     return filterFunil ? `${p} · ${filterFunil}` : p
-  }, [filterAno, filterMes, filterFunil])
+  }, [filterAno, filterMes, filterDataDe, filterDataAte, filterFunil, periodoFiltroAtivo])
 
   const handleCopyReport = useCallback(() => {
     navigator.clipboard.writeText(reportText).then(
@@ -2562,16 +2655,64 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
               <option value="">Todas as áreas</option>
               {areasDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <select id="filter-ano" value={filterAno} onChange={(e) => { setFilterAno(e.target.value ? Number(e.target.value) : ''); setFilterMes('') }} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm">
+            <select
+              id="filter-ano"
+              value={filterAno}
+              onChange={(e) => {
+                setFilterAno(e.target.value ? Number(e.target.value) : '')
+                setFilterMes('')
+                setFilterDataDe('')
+                setFilterDataAte('')
+              }}
+              disabled={!!(filterDataDe || filterDataAte)}
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50"
+            >
               <option value="">Todos os anos</option>
               {anosDisponiveis.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <select id="filter-mes" value={filterMes} onChange={(e) => setFilterMes(e.target.value ? Number(e.target.value) : '')} disabled={!filterAno} className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50">
+            <select
+              id="filter-mes"
+              value={filterMes}
+              onChange={(e) => {
+                setFilterMes(e.target.value ? Number(e.target.value) : '')
+                setFilterDataDe('')
+                setFilterDataAte('')
+              }}
+              disabled={!filterAno || !!(filterDataDe || filterDataAte)}
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm disabled:opacity-50"
+            >
               <option value="">Todos os meses</option>
               {mesesDisponiveis.map((m) => <option key={m} value={m}>{MESES_LABEL[m] ?? m}</option>)}
             </select>
-            {(filterAno || filterMes) && (
-              <span className="text-sm text-gray-500">Período: {filterAno}{filterMes ? ` · ${MESES_LABEL[filterMes] ?? filterMes}` : ''}</span>
+            <span className="text-sm text-gray-400">ou</span>
+            <input
+              id="filter-data-de"
+              type="date"
+              value={filterDataDe}
+              onChange={(e) => {
+                setFilterDataDe(e.target.value)
+                setFilterAno('')
+                setFilterMes('')
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              title="Data de criação — a partir de"
+            />
+            <span className="text-sm text-gray-500">até</span>
+            <input
+              id="filter-data-ate"
+              type="date"
+              value={filterDataAte}
+              onChange={(e) => {
+                setFilterDataAte(e.target.value)
+                setFilterAno('')
+                setFilterMes('')
+              }}
+              min={filterDataDe || undefined}
+              className="rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+              title="Data de criação — até"
+            />
+            {hasPeriodoFiltro && (
+              <span className="text-sm text-gray-500">Período: {periodoFiltroAtivo} (por data de criação)</span>
             )}
             <button type="button" onClick={clearMainFilters} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
               <Eraser className="h-4 w-4" />
@@ -2862,6 +3003,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
             { value: 'indicacao' as const, label: 'Por indicação' },
             { value: 'nome-indicacao' as const, label: 'Top indicadores' },
             { value: 'perdidas-anotacao' as const, label: 'Perdidas com anotação' },
+            { value: 'lista-completa' as const, label: 'Lista completa de leads' },
           ]).map(({ value, label }) => (
             <button
               key={value}
@@ -2879,7 +3021,12 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
           ))}
         </div>
         {/* Texto do relatório (centro) */}
-        <pre className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-800 whitespace-pre-wrap font-sans overflow-x-auto max-h-64 overflow-y-auto my-6">
+        <pre
+          className={cn(
+            'rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-800 whitespace-pre-wrap font-sans overflow-x-auto overflow-y-auto my-6',
+            reportType === 'lista-completa' ? 'max-h-[28rem]' : 'max-h-64'
+          )}
+        >
           {reportText}
         </pre>
         {/* Copiar + destinatário + enviar WhatsApp (mesma tela) */}
