@@ -8,6 +8,9 @@
     "dev:vite": "vite",
     "dev:api": "node scripts/dev-api-server.js",
     "report:posvenda-etapas": "node scripts/relatorio-posvenda-etapas-local.js",
+    "sync:status-rd": "node scripts/sync-status-rd-sheets-local.js",
+    "sync:status-rd:apply": "node scripts/sync-status-rd-sheets-local.js --apply",
+    "export:leads-2026-jan-maio": "node scripts/export-leads-2026-jan-maio.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"

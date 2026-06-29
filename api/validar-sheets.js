@@ -386,6 +386,7 @@ const DISREGARD_STAGE_NAMES = [
   'Contatos',
   'Novos Contatos',
   'Execução do Serviço',
+  'Clientes',
 ].map((s) => s.trim().toLowerCase())
 
 // --- Configuração: ativar/desativar validações por campo (frontend envia validationConfig no body) ---

@@ -10,6 +10,7 @@ import handlerValidar from '../api/validar-sheets.js'
 import handlerWhatsapp from '../api/enviar-whatsapp.js'
 import handlerSyncAnotacoes from '../api/sync-anotacoes.js'
 import handlerSyncFinanceiroRd from '../api/sync-financeiro-rd.js'
+import handlerSyncStatusRdSheets from '../api/sync-status-rd-sheets.js'
 import handlerAuditarEtapa1RdSheets from '../api/auditar-etapa1-rd-sheets.js'
 import handlerRelatorioPosvendaEtapas from '../api/relatorio-posvenda-etapas.js'
 import handlerGoogleOAuth from '../api/google-oauth.js'
@@ -71,6 +72,7 @@ export function createDevApiApp() {
   app.all('/api/enviar-whatsapp', (req, res) => handlerWhatsapp(req, res))
   app.all('/api/sync-anotacoes', (req, res) => handlerSyncAnotacoes(req, res))
   app.all('/api/sync-financeiro-rd', (req, res) => handlerSyncFinanceiroRd(req, res))
+  app.all('/api/sync-status-rd-sheets', (req, res) => handlerSyncStatusRdSheets(req, res))
   app.all('/api/auditar-etapa1-rd-sheets', (req, res) => handlerAuditarEtapa1RdSheets(req, res))
   app.all('/api/relatorio-posvenda-etapas', (req, res) => handlerRelatorioPosvendaEtapas(req, res))
   app.all('/api/google-oauth', (req, res) => handlerGoogleOAuth(req, res))

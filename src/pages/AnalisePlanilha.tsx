@@ -672,6 +672,7 @@ const STAGES_IGNORADOS = [
   'Contatos',
   'Novos Contatos',
   'Execução do Serviço',
+  'Clientes',
 ]
 
 /** Etapas do Funil de vendas (ordem oficial). */
