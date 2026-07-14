@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
-import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter, History, Scale, Users, Crown, TrendingDown, FileCheck, Calculator, Briefcase, Eye } from 'lucide-react'
+import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter, History, Scale, Users, Crown, TrendingDown, FileCheck, Calculator, Briefcase, Eye, Download } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { WppRecipientPicker } from '@/components/WppRecipientPicker'
 import { fixMojibake } from '@/lib/utils'
@@ -21,6 +21,7 @@ import {
 } from '@/lib/wppDestinations'
 import { getTeamMember, getSolicitanteKey, getAreaByEmail } from '@/data/teamAvatars'
 import { supabase } from '@/lib/supabase'
+import { downloadRelatorioSlaXlsx } from '@/lib/relatorioSlaXlsx'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API = (path: string) => `${API_BASE}/api${path}`
@@ -611,6 +612,40 @@ export function LeadsForaSLA() {
     setBatchProgress(null)
   }, [])
 
+  const handleExportXlsx = useCallback(() => {
+    const rows = selectedRows.length > 0 ? selectedRows : foraDoSlaFiltered
+    const linhas = rows.map((r) => {
+      const email = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const member = email ? getTeamMember(email) : null
+      const area = email ? getAreaByEmail(email) : ''
+      return {
+        lead: fixMojibake(r.nome_lead || r.id_registro || `Linha ${r.rowIndex}`),
+        razao_social: fixMojibake(r.razao_social) || '',
+        responsavel_nome: member?.name ?? '',
+        responsavel_email: email,
+        area: area || '',
+        etapa: r.stage_name || '',
+        funil: r.funil || '',
+        dias_sem_movimentacao: r.dias_desde_movimentacao ?? null,
+        dias_sem_followup: r.dias_desde_followup ?? null,
+        data_ultima_atualizacao: r.updated_at_iso
+          ? new Date(r.updated_at_iso).toLocaleDateString('pt-BR')
+          : '',
+        data_criacao: r.created_at_iso ? new Date(r.created_at_iso).toLocaleDateString('pt-BR') : '',
+        data_ultimo_followup: r.follow_up_iso ? new Date(r.follow_up_iso).toLocaleDateString('pt-BR') : '',
+        anotacao_followup: fixMojibake(r.follow_up_anotacao) || '',
+        telefone: r.telefone_notificar || '',
+        deal_id: r.deal_id || '',
+        link_crm: r.deal_id ? `${RD_CRM_DEAL_URL}${r.deal_id}` : '',
+      }
+    })
+    downloadRelatorioSlaXlsx({
+      linhas,
+      gerado_em: new Date().toISOString(),
+      nota: `Fora do SLA: > ${SLA_DIAS} dias sem movimentação e > ${SLA_DIAS_FOLLOWUP} dias sem follow-up (quando aplicável).`,
+    })
+  }, [selectedRows, foraDoSlaFiltered])
+
   const openWppBatch = useCallback(() => {
     setWppModalRow(null)
     const rows = selectedRows.length > 0 ? selectedRows : foraDoSlaFiltered
@@ -1116,6 +1151,18 @@ export function LeadsForaSLA() {
                     <span className="text-gray-400 text-sm ml-1">
                       {selectedIds.size > 0 ? `${selectedIds.size} selecionado${selectedIds.size !== 1 ? 's' : ''}` : ''}
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleExportXlsx}
+                      disabled={foraDoSlaFiltered.length === 0}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-white font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Baixar relatório em Excel com nome do lead, responsável, área e demais detalhes"
+                    >
+                      <Download className="h-4 w-4" />
+                      {selectedRows.length > 0
+                        ? `Excel (${selectedRows.length} selecionado${selectedRows.length !== 1 ? 's' : ''})`
+                        : `Excel (${foraDoSlaFiltered.length} lead${foraDoSlaFiltered.length !== 1 ? 's' : ''})`}
+                    </button>
                     <button
                       type="button"
                       onClick={openWppBatch}
