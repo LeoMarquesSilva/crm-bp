@@ -89,6 +89,7 @@ import { useCountUp } from '@/hooks/useCountUp'
 type SemAreaDetalhe = { solicitanteNome: string; leadNome: string }
 import { cn } from '@/lib/utils'
 import { downloadRelatorioPosvendaEtapasXlsx, type PosvendaRelatorioLinha } from '@/lib/relatorioPosvendaEtapasXlsx'
+import { downloadListaLeadsXlsx, type ListaLeadsLinha } from '@/lib/relatorioListaLeadsXlsx'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API = (path: string) => `${API_BASE}/api${path}`
@@ -2515,6 +2516,54 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
     }
   }, [])
 
+  const filtrosAtivosLabel = useMemo(() => {
+    const partes: string[] = []
+    partes.push(aiPeriodLabel)
+    if (filterArea) partes.push(`Área: ${filterArea}`)
+    if (filterSolicitante) {
+      partes.push(`Solicitante: ${getSolicitanteLabel(filterSolicitante === '(sem e-mail)' ? '' : filterSolicitante)}`)
+    }
+    if (selectedEtapas.length > 0) partes.push(`Etapas: ${selectedEtapas.join(', ')}`)
+    return partes.join(' · ')
+  }, [aiPeriodLabel, filterArea, filterSolicitante, selectedEtapas, getSolicitanteLabel])
+
+  const handleExportFiltroExcel = useCallback(() => {
+    const statusLabel = (s: RowStatus | null | undefined, raw: string | null | undefined) => {
+      if (s === 'win') return 'Ganho (Vendido)'
+      if (s === 'lost') return 'Perdido'
+      if (s === 'ongoing') return 'Em andamento'
+      return raw || '—'
+    }
+    const linhas: ListaLeadsLinha[] = results.map((r) => {
+      const email = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+      const member = email ? getTeamMember(email) : null
+      const area = email ? getAreaByEmail(email) : null
+      return {
+        nome_lead: r.nome_lead || r.id_registro || `Linha ${r.rowIndex}`,
+        razao_social: r.razao_social || '',
+        solicitante: member?.name ?? email,
+        area: area || '',
+        email_solicitante: email,
+        funil: r.funil || '',
+        etapa: r.stage_name || '',
+        status: statusLabel(r.status, r.status_raw),
+        data_criacao: r.created_at_iso ? new Date(r.created_at_iso).toLocaleDateString('pt-BR') : '',
+        data_atualizacao: r.updated_at_iso ? new Date(r.updated_at_iso).toLocaleDateString('pt-BR') : '',
+        motivo_perda: r.motivo_perda || '',
+        tipo_lead: r.tipo_lead || '',
+        indicacao: r.indicacao || '',
+        nome_indicacao: r.nome_indicacao || '',
+        deal_id: r.deal_id || '',
+        link_crm: r.deal_id ? `${RD_CRM_DEAL_URL}${r.deal_id}` : '',
+      }
+    })
+    downloadListaLeadsXlsx({
+      linhas,
+      filtrosLabel: filtrosAtivosLabel,
+      nomeArquivoBase: filterArea ? `leads-${filterArea.toLowerCase().replace(/\s+/g, '-')}` : 'leads-filtro-dashboard',
+    })
+  }, [results, filtrosAtivosLabel, filterArea])
+
   const openWppModal = useCallback(() => {
     setWppMessage(reportText)
     setWppError(null)
@@ -3032,14 +3081,29 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         </pre>
         {/* Copiar + destinatário + enviar WhatsApp (mesma tela) */}
         <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={handleCopyReport}
-            className="inline-flex w-fit items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
-          >
-            <Copy className="h-4 w-4" />
-            {copyFeedback ? 'Copiado!' : 'Copiar mensagem'}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCopyReport}
+              className="inline-flex w-fit items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90"
+            >
+              <Copy className="h-4 w-4" />
+              {copyFeedback ? 'Copiado!' : 'Copiar mensagem'}
+            </button>
+            <button
+              type="button"
+              onClick={handleExportFiltroExcel}
+              disabled={results.length === 0}
+              className="inline-flex w-fit items-center gap-2 px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-900 text-sm font-medium hover:bg-emerald-100 disabled:opacity-50 disabled:pointer-events-none"
+              title={filtrosAtivosLabel}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Exportar Excel ({results.length})
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 -mt-1">
+            O Excel exporta os leads conforme os filtros aplicados acima ({filtrosAtivosLabel}), em qualquer etapa do funil — não apenas pós-venda.
+          </p>
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
             <WppRecipientPicker
               idPrefix="wpp-inline"
