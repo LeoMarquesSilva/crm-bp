@@ -8,6 +8,8 @@ export type TeamMember = {
   avatar: string
   tag: string
   name: string
+  /** Colaborador inativo: mantém leads/histórico visíveis no dashboard e SLA, mas some das opções de novo cadastro. */
+  active?: boolean
 }
 
 /** E-mails @bismarchipires são normalizados para @bpplaw na busca (considere bpplaw para todos). */
@@ -60,16 +62,19 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     avatar: `${BASE_URL}/distressed-deals/michel.jpg`,
     tag: 'Distressed Deals',
     name: 'Michel Malaquias',
+    active: false,
   },
   'emanueli.lourenco@bpplaw.com.br': {
     avatar: `${BASE_URL}/distressed-deals/emanueli-lourenco.png`,
     tag: 'Distressed Deals',
     name: 'Emanueli Lourenço',
+    active: false,
   },
   'ariany.bispo@bpplaw.com.br': {
     avatar: `${BASE_URL}/distressed-deals/ariany-bispo.png`,
     tag: 'Distressed Deals',
     name: 'Ariany Bispo',
+    active: false,
   },
   // Reestruturação
   'jorge@bpplaw.com.br': {
@@ -96,6 +101,7 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     avatar: `${BASE_URL}/reestruturacao/jansonn.jpg`,
     tag: 'Societário e Contratos',
     name: 'Jansonn Mendonça Batista',
+    active: false,
   },
   'henrique.nascimento@bpplaw.com.br': {
     avatar: 'https://www.bismarchipires.com.br/blog/wp-content/uploads/2026/02/Henrique-Franco-Nascimento.jpeg',
@@ -144,6 +150,7 @@ function toBismarchiEmail(bpplawEmail: string): string {
 export type SolicitanteOption = { email: string; emailBismarchi: string; name: string; avatar: string }
 export function getSolicitanteOptions(): SolicitanteOption[] {
   return Object.entries(TEAM_BY_EMAIL)
+    .filter(([, m]) => m.active !== false)
     .map(([email, m]) => ({
       email,
       emailBismarchi: toBismarchiEmail(email),
@@ -161,7 +168,10 @@ export function getSolicitanteKey(email: string): string {
 export function getTeamMember(email: string): TeamMember | null {
   const key = normalizeEmailForLookup(email)
   if (!key) return null
-  return TEAM_BY_EMAIL[key] ?? null
+  const m = TEAM_BY_EMAIL[key]
+  if (!m) return null
+  if (m.active === false) return { ...m, name: `${m.name} (Inativo)` }
+  return m
 }
 
 /** Área (tag) do solicitante por e-mail. Usado no filtro por área (área = tag do solicitante). */
