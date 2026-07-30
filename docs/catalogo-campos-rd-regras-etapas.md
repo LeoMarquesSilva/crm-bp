@@ -79,37 +79,46 @@ Observacao:
 
 ## 3.2 Etapa: Levantamento de Dados (ADD)
 
-Nao ha bloco de campos formais no codigo; etapa guiada por checklist operacional:
-- pasta solicitada no VIOS;
-- subpasta due criada;
-- areas notificadas;
+Novo fluxo: agendamentos gerados automaticamente (nao e mais solicitado via Central/ADD). Etapa guiada por checklist operacional:
+- levantamento das informacoes realizado pela area responsavel;
+- dados disponibilizados na pasta "Due Diligence" (VIOS);
 - pendencias registradas.
+
+Regra: apos a disponibilizacao das informacoes pelas areas, o Solicitante da DUE deve mover a negociacao no RD para "Compilacao".
 
 ---
 
 ## 3.3 Etapa: Compilacao (MKT/COM.)
 
-Etapa guiada por checklist:
+Compilacao (elaboracao da DUE) realizada por Leonardo Marques. Etapa guiada por checklist:
 - template oficial aplicado;
 - versao com data;
 - pendencias listadas;
 - fontes por area.
 
+Regra: ao concluir, a negociacao e movida automaticamente para "Revisao" e um e-mail automatico e disparado para as areas responsaveis.
+
 ---
 
 ## 3.4 Etapa: Revisao (ADD)
 
-Etapa guiada por checklist:
-- sem campos criticos em branco;
-- padronizacao aplicada;
-- links funcionais;
-- pendencias claras.
+Cada area envolvida revisa os seguintes pontos:
+- identificacao do cliente (nome da DUE confere com o nome do cliente);
+- CNPJs validados entre os solicitados e os constantes no material;
+- conferencia das bases: quantidade de processos, valores envolvidos, tipos de acoes, fase processual.
+
+Regra: sem correcoes, o Solicitante da DUE move a negociacao para "Due Diligence Finalizada"; com correcoes, o responsavel pela revisao aciona Leonardo Marques para os ajustes.
 
 ---
 
 ## 3.5 Etapa: Due Diligence Finalizada (SOLICITANTE)
 
-Campos:
+Entrega da DUE pelo Solicitante da DUE (checklist):
+- arquivo da DUE salvo em PDF (obrigatorio);
+- PDF hospedado na pasta do cliente (obrigatorio);
+- encaminhado aos socios, quando necessario (opcional).
+
+Campos (agendamento da reuniao):
 - Data da Reuniao (obrigatorio)
 - Horario (obrigatorio)
 - Local (obrigatorio)

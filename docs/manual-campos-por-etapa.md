@@ -254,35 +254,34 @@ Observacao sobre numeracao: no codigo, **"Cadastro do Lead" e a etapa 1**; as et
 ## Etapa 2 — Levantamento de Dados (ADD) (`lev-dados`)
 
 **Titulo:** Levantamento de Dados (ADD)  
-**Subtitulo:** Coleta inicial coordenada
+**Subtitulo:** Levantamento pelas áreas envolvidas
 
 **Descricao da etapa**
 
-> Coleta inicial coordenada para análise de viabilidade
+> Os agendamentos são gerados automaticamente (não é mais solicitado via Central/ADD). Cabe aos responsáveis de cada área realizar o levantamento das informações e disponibilizar os dados na pasta "Due Diligence".
+
+**Alertas da etapa**
+
+> ⚠️ Novo fluxo: os agendamentos passam a ser gerados automaticamente — não é mais necessário solicitar via Central/ADD.
+> ⚠️ Após a disponibilização das informações pelas áreas, o Solicitante da DUE deve mover a negociação no RD para a etapa "Compilação".
 
 **Criterio de saida**
 
-> Todas as áreas entregaram insumos → mover para Compilação
+> Áreas disponibilizaram os dados na pasta Due Diligence → Solicitante da DUE move a negociação para Compilação
 
 ### Itens de checklist (atuam como “campos operacionais” desta etapa)
 
-#### Checklist: Pasta solicitada no VIOS (obrigatorio)
+#### Checklist: Levantamento das informações realizado pela área responsável (obrigatorio)
 
 **Manual**
 
-> Pasta solicitada no VIOS
+> Levantamento das informações realizado pela área responsável
 
-#### Checklist: Subpasta criada (Due Diligence) (obrigatorio)
-
-**Manual**
-
-> Subpasta criada (Due Diligence)
-
-#### Checklist: Áreas notificadas (obrigatorio)
+#### Checklist: Dados disponibilizados na pasta "Due Diligence" (VIOS) (obrigatorio)
 
 **Manual**
 
-> Áreas notificadas
+> Dados disponibilizados na pasta "Due Diligence" (VIOS)
 
 #### Checklist: Pendências registradas (ou N/A) (obrigatorio)
 
@@ -299,11 +298,15 @@ Observacao sobre numeracao: no codigo, **"Cadastro do Lead" e a etapa 1**; as et
 
 **Descricao da etapa**
 
-> Organização dos materiais em template padronizado
+> Organização dos materiais em template padronizado. Compilação (elaboração da DUE) realizada por Leonardo Marques.
+
+**Alertas da etapa**
+
+> 💡 Ao concluir, a negociação é movida automaticamente para "Revisão" e um e-mail automático é disparado para as áreas responsáveis.
 
 **Criterio de saida**
 
-> Documento único consolidado → mover para Revisão
+> Documento único consolidado → negociação movida automaticamente para Revisão + e-mail às áreas responsáveis
 
 ### Itens de checklist
 
@@ -336,56 +339,89 @@ Observacao sobre numeracao: no codigo, **"Cadastro do Lead" e a etapa 1**; as et
 ## Etapa 4 — Revisão (ADD) (`revisao`)
 
 **Titulo:** Revisão (ADD)  
-**Subtitulo:** Verificação de completude
+**Subtitulo:** Conferência técnica pelas áreas envolvidas
 
 **Descricao da etapa**
 
-> Verificação de completude, coerência e formatação
+> Cada área envolvida revisa a identificação do cliente, os CNPJs e as bases (processos, valores, tipos de ação e fase processual).
 
 **Alertas da etapa**
 
-> Inconsistências? Retornar para Compilação com comentário
+> Sem correções → o Solicitante da DUE deve mover a negociação para "Due Diligence Finalizada".
+> Com correções → o responsável pela revisão deve acionar Leonardo Marques para realizar os ajustes.
 
 **Criterio de saida**
 
-> Ajustes finalizados → Due Finalizada
+> Revisão sem correções → Solicitante da DUE move a negociação para "Due Diligence Finalizada"
 
 ### Itens de checklist
 
-#### Checklist: Sem campos críticos em branco (obrigatorio)
+#### Checklist: Identificação do cliente: nome da DUE confere com o nome do cliente (obrigatorio)
 
 **Manual**
 
-> Sem campos críticos em branco
+> Identificação do cliente: nome da DUE confere com o nome do cliente
 
-#### Checklist: Padronização de CAIXA ALTA onde aplicável (obrigatorio)
-
-**Manual**
-
-> Padronização de CAIXA ALTA onde aplicável
-
-#### Checklist: Links funcionais (obrigatorio)
+#### Checklist: CNPJs validados entre os solicitados e os constantes no material (obrigatorio)
 
 **Manual**
 
-> Links funcionais
+> CNPJs validados entre os solicitados e os constantes no material
 
-#### Checklist: Pendências claras (obrigatorio)
+#### Checklist: Conferência das bases: quantidade de processos (obrigatorio)
 
 **Manual**
 
-> Pendências claras
+> Conferência das bases: quantidade de processos
+
+#### Checklist: Conferência das bases: valores envolvidos (obrigatorio)
+
+**Manual**
+
+> Conferência das bases: valores envolvidos
+
+#### Checklist: Conferência das bases: tipos de ações (obrigatorio)
+
+**Manual**
+
+> Conferência das bases: tipos de ações
+
+#### Checklist: Conferência das bases: fase processual (obrigatorio)
+
+**Manual**
+
+> Conferência das bases: fase processual
 
 ---
 
 ## Etapa 5 — Due Diligence Finalizada (SOLICITANTE) (`due-finalizada`)
 
 **Titulo:** Due Diligence Finalizada (SOLICITANTE)  
-**Subtitulo:** Responsabilidade do solicitante
+**Subtitulo:** Entrega da DUE e agendamento da reunião
 
 **Descricao da etapa**
 
-> Após a finalização da Due Diligence, o solicitante é responsável por agendar e definir os detalhes da reunião
+> Após a finalização da revisão, o Solicitante da DUE deve entregar a DUE (salvar em PDF, hospedar na pasta do cliente e encaminhar aos sócios quando necessário) e agendar a reunião.
+
+### Itens de checklist
+
+#### Checklist: Arquivo da DUE salvo em formato PDF (obrigatorio)
+
+**Manual**
+
+> Arquivo da DUE salvo em formato PDF
+
+#### Checklist: PDF hospedado na pasta do cliente (obrigatorio)
+
+**Manual**
+
+> PDF hospedado na pasta do cliente
+
+#### Checklist: Encaminhado aos sócios (quando necessário) (opcional)
+
+**Manual**
+
+> Encaminhado aos sócios (quando necessário)
 
 ### Campo: Data da Reunião
 
