@@ -29,6 +29,18 @@ Observacao: o sistema trata `@bpplaw.com.br` e `@bismarchipires.com.br` como a m
   - Email equivalente: `giancarlo@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/civel/giancarlo.jpg
 
+- **Maria Caroline da Cunha Thomé**
+  - Area: `Cível`
+  - Email principal: `caroline.thome@bpplaw.com.br`
+  - Email equivalente: `caroline.thome@bismarchipires.com.br`
+  - Avatar: https://www.bismarchipires.com.br/img/team/civel/maria-caroline.jpg
+
+- **Giovani Pina de Freitas**
+  - Area: `Cível`
+  - Email principal: `giovani.pina@bpplaw.com.br`
+  - Email equivalente: `giovani.pina@bismarchipires.com.br`
+  - Avatar: https://www.bismarchipires.com.br/img/team/civel/giovani-pina.jpg
+
 - **Daniel Pressatto Fernandes**
   - Area: `Trabalhista`
   - Email principal: `daniel@bpplaw.com.br`
@@ -112,7 +124,3 @@ Observacao: o sistema trata `@bpplaw.com.br` e `@bismarchipires.com.br` como a m
   - Email principal: `francisco.zanin@bpplaw.com.br`
   - Email equivalente: `francisco.zanin@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/blog/wp-content/uploads/2026/01/Captura-de-tela-2026-01-27-180946.png
-
-## Pendencia identificada
-
-- `Priscila Varga de Morais` aparece na lista de solicitantes validos (`api/validar-sheets.js`), mas nao possui cadastro correspondente em `src/data/teamAvatars.ts` (sem e-mail/avatar mapeados).

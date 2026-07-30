@@ -539,6 +539,8 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Giancarlo Zotini',
   'Henrique Franco Nascimento',
   'Gabriela Consul',
+  'Maria Caroline da Cunha Thomé',
+  'Giovani Pina de Freitas',
   'Michel Malaquias',
   'Daniel Pressatto Fernandes',
   'Renato Vallim',
@@ -549,7 +551,6 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Ligia Lopes',
   'Francisco Zanin',
   'Jorge Pecht Souza',
-  'Priscila Varga de Morais',
 ]
 
 function normalizarNomeParaComparacao(s) {

@@ -34,6 +34,16 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Cível',
     name: 'Giancarlo Zotini',
   },
+  'caroline.thome@bpplaw.com.br': {
+    avatar: `${BASE_URL}/civel/maria-caroline.jpg`,
+    tag: 'Cível',
+    name: 'Maria Caroline da Cunha Thomé',
+  },
+  'giovani.pina@bpplaw.com.br': {
+    avatar: `${BASE_URL}/civel/giovani-pina.jpg`,
+    tag: 'Cível',
+    name: 'Giovani Pina de Freitas',
+  },
   // Trabalhista
   'daniel@bpplaw.com.br': {
     avatar: `${BASE_URL}/trabalhista/daniel-pressato-fernandes.jpg`,

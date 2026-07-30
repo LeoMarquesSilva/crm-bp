@@ -45,6 +45,8 @@ const TEAM_BY_EMAIL = {
   'ricardo@bpplaw.com.br': { name: 'Ricardo Viscardi Pires', tag: 'Sócio' },
   'gabriela.consul@bpplaw.com.br': { name: 'Gabriela Consul', tag: 'Cível' },
   'giancarlo@bpplaw.com.br': { name: 'Giancarlo Zotini', tag: 'Cível' },
+  'caroline.thome@bpplaw.com.br': { name: 'Maria Caroline da Cunha Thomé', tag: 'Cível' },
+  'giovani.pina@bpplaw.com.br': { name: 'Giovani Pina de Freitas', tag: 'Cível' },
   'daniel@bpplaw.com.br': { name: 'Daniel Pressatto Fernandes', tag: 'Trabalhista' },
   'renato@bpplaw.com.br': { name: 'Renato Vallim', tag: 'Trabalhista' },
   'michel.malaquias@bpplaw.com.br': { name: 'Michel Malaquias', tag: 'Distressed Deals' },
