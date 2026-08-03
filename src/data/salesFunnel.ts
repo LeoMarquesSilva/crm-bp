@@ -94,7 +94,7 @@ export const salesFunnelSteps: Step[] = [
       },
       {
         name: 'Áreas de análise *',
-        instruction: 'Selecione todas as áreas do escritório que estarão envolvidas neste caso. Obrigatório pelo menos uma. Múltipla escolha. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário e Contratos.',
+        instruction: 'Selecione todas as áreas do escritório que estarão envolvidas neste caso. Obrigatório pelo menos uma. Múltipla escolha. Opções: Cível, Reestruturação, Tributário, Trabalhista, Recuperação de Créditos, Societário e Contratos.',
         example: 'Cível; Trabalhista; Tributário',
         required: true,
       },
@@ -237,7 +237,7 @@ export const salesFunnelSteps: Step[] = [
       },
       {
         name: 'Áreas Objeto do contrato [CP]',
-        instruction: 'Selecione todas as áreas do escritório que serão objeto do contrato conforme acordado na reunião. Múltipla escolha - selecione todas que se aplicam. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário, Contratos, Trabalhista Consultivo, etc.',
+        instruction: 'Selecione todas as áreas do escritório que serão objeto do contrato conforme acordado na reunião. Múltipla escolha - selecione todas que se aplicam. Opções: Cível, Reestruturação, Tributário, Trabalhista, Recuperação de Créditos, Societário, Contratos, Trabalhista Consultivo, etc.',
         example: 'Trabalhista Consultivo; Cível; Tributário',
         required: true,
         tag: 'CP',

@@ -243,7 +243,7 @@ Observacao sobre numeracao: no codigo, **"Cadastro do Lead" e a etapa 1**; as et
 
 **Manual**
 
-> Selecione todas as áreas do escritório que estarão envolvidas neste caso. Obrigatório pelo menos uma. Múltipla escolha. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário e Contratos.
+> Selecione todas as áreas do escritório que estarão envolvidas neste caso. Obrigatório pelo menos uma. Múltipla escolha. Opções: Cível, Reestruturação, Tributário, Trabalhista, Recuperação de Créditos, Societário e Contratos.
 
 **Exemplo**
 
@@ -546,7 +546,7 @@ Observacao sobre numeracao: no codigo, **"Cadastro do Lead" e a etapa 1**; as et
 
 **Manual**
 
-> Selecione todas as áreas do escritório que serão objeto do contrato conforme acordado na reunião. Múltipla escolha - selecione todas que se aplicam. Opções: Cível, Reestruturação, Tributário, Trabalhista, Distressed Deals, Societário, Contratos, Trabalhista Consultivo, etc.
+> Selecione todas as áreas do escritório que serão objeto do contrato conforme acordado na reunião. Múltipla escolha - selecione todas que se aplicam. Opções: Cível, Reestruturação, Tributário, Trabalhista, Recuperação de Créditos, Societário, Contratos, Trabalhista Consultivo, etc.
 
 **Exemplo**
 

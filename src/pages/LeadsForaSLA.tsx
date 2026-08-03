@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
-import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter, History, Scale, Users, Crown, TrendingDown, FileCheck, Calculator, Briefcase, Eye, Download } from 'lucide-react'
+import { Clock, Loader2, AlertCircle, RefreshCw, ExternalLink, FileSpreadsheet, User, MessageCircle, X, Filter, History, Scale, Users, Crown, TrendingDown, FileCheck, Calculator, Briefcase, Eye, Download, Landmark } from 'lucide-react'
 import { Alert } from '@/components/ui/Alert'
 import { WppRecipientPicker } from '@/components/WppRecipientPicker'
 import { fixMojibake } from '@/lib/utils'
@@ -176,6 +176,7 @@ const AREA_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   'Cível': Scale,
   'Trabalhista': Users,
   'Distressed Deals': TrendingDown,
+  'Recuperação de Créditos': Landmark,
   'Reestruturação': RefreshCw,
   'Operações Legais': FileCheck,
   'Tributário': Calculator,

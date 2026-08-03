@@ -46,6 +46,7 @@ import {
   Scale,
   Crown,
   FileCheck,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -703,6 +704,7 @@ const AREA_ICONS: Record<string, LucideIcon> = {
   'Cível': Scale,
   'Trabalhista': Users,
   'Distressed Deals': TrendingDown,
+  'Recuperação de Créditos': Landmark,
   'Reestruturação': RefreshCw,
   'Operações Legais': FileCheck,
   'Tributário': Calculator,

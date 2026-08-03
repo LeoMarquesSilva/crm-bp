@@ -30,6 +30,7 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     avatar: `${BASE_URL}/civel/gabriela-consul.jpg`,
     tag: 'Cível',
     name: 'Gabriela Consul',
+    active: false,
   },
   'giancarlo@bpplaw.com.br': {
     avatar: `${BASE_URL}/civel/giancarlo.jpg`,

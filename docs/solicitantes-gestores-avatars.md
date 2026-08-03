@@ -19,7 +19,7 @@ Colaboradores marcados `INATIVO` (`active: false` em `teamAvatars.ts`) continuam
   - Email equivalente: `ricardo@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/ricardo-pires.jpg
 
-- **Gabriela Consul**
+- **Gabriela Consul** — `INATIVO`
   - Area: `Cível`
   - Email principal: `gabriela.consul@bpplaw.com.br`
   - Email equivalente: `gabriela.consul@bismarchipires.com.br`

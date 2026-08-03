@@ -37,7 +37,7 @@ const AREAS_ANALISE_OPCOES = [
   'Reestruturação',
   'Tributário',
   'Trabalhista',
-  'Distressed Deals',
+  'Recuperação de Créditos',
   'Societário e Contratos',
 ] as const
 

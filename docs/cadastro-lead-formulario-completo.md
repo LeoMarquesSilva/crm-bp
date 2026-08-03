@@ -89,7 +89,7 @@ Comandos de interface:
      - Reestruturacao
      - Tributario
      - Trabalhista
-     - Distressed Deals
+     - Recuperacao de Creditos
      - Societario e Contratos
 
 ---
