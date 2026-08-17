@@ -287,18 +287,43 @@ function saveToken(access_token: string, expires_in: number) {
 }
 
 /** Ano/mês em UTC a partir do ISO (evita diferença por fuso ao filtrar) */
-function getYearMonthUTC(iso: string | null | undefined): { year: number; month: number } | null {
+const BRASILIA_TIME_ZONE = 'America/Sao_Paulo'
+const BRASILIA_OFFSET = '-03:00'
+
+/** Data (YYYY-MM-DD) no calendário de Brasília para um instante — independe do fuso do navegador/servidor. */
+function brasiliaYmd(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: BRASILIA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+}
+
+/** Início ou fim do dia (YYYY-MM-DD) em horário de Brasília, como instante absoluto. */
+function brasiliaDayBoundary(ymd: string, endOfDay: boolean): Date {
+  const time = endOfDay ? '23:59:59.999' : '00:00:00.000'
+  return new Date(`${ymd}T${time}${BRASILIA_OFFSET}`)
+}
+
+/** Meia-noite (início do dia) em horário de Brasília do dia calendário correspondente a um instante. */
+function brasiliaMidnight(date: Date): Date {
+  return brasiliaDayBoundary(brasiliaYmd(date), false)
+}
+
+function getYearMonthBrasilia(iso: string | null | undefined): { year: number; month: number } | null {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 }
+  const [y, m] = brasiliaYmd(d).split('-')
+  return { year: Number(y), month: Number(m) }
 }
 
 /** Filtro e listas por ano/mês usam sempre a DATA DE CRIAÇÃO (Date_Create), não a de atualização. */
 function getAnosDisponiveis(rows: PlanilhaRow[]): number[] {
   const anos = new Set<number>()
   rows.forEach((r) => {
-    const ym = getYearMonthUTC(r.created_at_iso)
+    const ym = getYearMonthBrasilia(r.created_at_iso)
     if (ym) anos.add(ym.year)
   })
   return Array.from(anos).sort((a, b) => b - a)
@@ -307,7 +332,7 @@ function getAnosDisponiveis(rows: PlanilhaRow[]): number[] {
 function getMesesDisponiveis(rows: PlanilhaRow[], ano: number): number[] {
   const meses = new Set<number>()
   rows.forEach((r) => {
-    const ym = getYearMonthUTC(r.created_at_iso)
+    const ym = getYearMonthBrasilia(r.created_at_iso)
     if (ym && ym.year === ano) meses.add(ym.month)
   })
   return Array.from(meses).sort((a, b) => a - b)
@@ -316,7 +341,7 @@ function getMesesDisponiveis(rows: PlanilhaRow[], ano: number): number[] {
 function filterByAnoMes(rows: PlanilhaRow[], ano: number | '', mes: number | ''): PlanilhaRow[] {
   if (!ano) return rows
   return rows.filter((r) => {
-    const ym = getYearMonthUTC(r.created_at_iso)
+    const ym = getYearMonthBrasilia(r.created_at_iso)
     if (!ym) return false
     if (ym.year !== ano) return false
     if (mes) return ym.month === mes
@@ -324,24 +349,18 @@ function filterByAnoMes(rows: PlanilhaRow[], ano: number | '', mes: number | '')
   })
 }
 
-/** Filtro por intervalo de datas (data de criação). dataDe/dataAte em YYYY-MM-DD (input type="date"). */
+/** Filtro por intervalo de datas (data de criação). dataDe/dataAte em YYYY-MM-DD (input type="date"), limites em horário de Brasília. */
 function filterByDateRange(rows: PlanilhaRow[], dataDe: string, dataAte: string): PlanilhaRow[] {
   if (!dataDe && !dataAte) return rows
+  const de = dataDe ? brasiliaDayBoundary(dataDe, false) : null
+  const ate = dataAte ? brasiliaDayBoundary(dataAte, true) : null
   return rows.filter((r) => {
     const raw = r.created_at_iso
     if (!raw) return false
     const d = new Date(raw)
     if (Number.isNaN(d.getTime())) return false
-    if (dataDe) {
-      const de = new Date(dataDe)
-      de.setHours(0, 0, 0, 0)
-      if (d < de) return false
-    }
-    if (dataAte) {
-      const ate = new Date(dataAte)
-      ate.setHours(23, 59, 59, 999)
-      if (d > ate) return false
-    }
+    if (de && d < de) return false
+    if (ate && d > ate) return false
     return true
   })
 }
@@ -380,10 +399,9 @@ function diasNaEtapa(lead: PlanilhaRow): number | null {
   if (!raw) return null
   const date = new Date(raw)
   if (Number.isNaN(date.getTime())) return null
-  const hoje = new Date()
-  hoje.setHours(0, 0, 0, 0)
-  date.setHours(0, 0, 0, 0)
-  const diffMs = hoje.getTime() - date.getTime()
+  const hoje = brasiliaMidnight(new Date())
+  const dataMeiaNoite = brasiliaMidnight(date)
+  const diffMs = hoje.getTime() - dataMeiaNoite.getTime()
   return Math.floor(diffMs / (24 * 60 * 60 * 1000))
 }
 
@@ -1236,7 +1254,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       const primeiroFatNum = parseOptionalNumeric(valorPrimeiroRaw)
       const valorContratoAnual = contratoNum.valid ? contratoNum.value : 0
       const valorPrimeiroFaturamento = primeiroFatNum.valid ? primeiroFatNum.value : 0
-      const createdYm = getYearMonthUTC(r.created_at_iso)
+      const createdYm = getYearMonthBrasilia(r.created_at_iso)
       const faturamentoYm = parseFinanceYearMonth(primeiroFaturamentoRaw)
       const leadRef = (r.nome_lead ?? r.razao_social ?? r.deal_id ?? '').trim() || `Linha ${r.rowIndex}`
 
