@@ -93,6 +93,11 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Reestruturação',
     name: 'Ligia Lopes',
   },
+  'lavinia.ferraz@bpplaw.com.br': {
+    avatar: 'https://www.bismarchipires.com.br/img/team/legal-ops/lavinia-ferraz-crispim.jpg',
+    tag: 'Reestruturação',
+    name: 'Lavínia Ferraz Crispim',
+  },
   'wagner.armani@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/wagner.jpg`,
     tag: 'Societário e Contratos',
@@ -114,11 +119,6 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     avatar: `${BASE_URL}/legal-ops/felipe-carmargo.jpg`,
     tag: 'Operações Legais',
     name: 'Felipe Camargo',
-  },
-  'lavinia.ferraz@bpplaw.com.br': {
-    avatar: 'https://www.bismarchipires.com.br/img/team/legal-ops/lavinia-ferraz-crispim.jpg',
-    tag: 'Operações Legais',
-    name: 'Lavínia Ferraz Crispim',
   },
   // Tributário
   'francisco.zanin@bpplaw.com.br': {

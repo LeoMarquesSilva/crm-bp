@@ -116,7 +116,7 @@ Colaboradores marcados `INATIVO` (`active: false` em `teamAvatars.ts`) continuam
   - Avatar: https://www.bismarchipires.com.br/img/team/legal-ops/felipe-carmargo.jpg
 
 - **Lavínia Ferraz Crispim**
-  - Area: `Operações Legais`
+  - Area: `Reestruturação`
   - Email principal: `lavinia.ferraz@bpplaw.com.br`
   - Email equivalente: `lavinia.ferraz@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/legal-ops/lavinia-ferraz-crispim.jpg
