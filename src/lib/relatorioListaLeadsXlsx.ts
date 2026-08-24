@@ -13,6 +13,7 @@ export type ListaLeadsLinha = {
   data_atualizacao: string
   motivo_perda: string
   tipo_lead: string
+  areas_analise: string
   indicacao: string
   nome_indicacao: string
   deal_id: string
@@ -32,6 +33,7 @@ const COLUNAS: { key: keyof ListaLeadsLinha; header: string }[] = [
   { key: 'data_atualizacao', header: 'Última atualização' },
   { key: 'motivo_perda', header: 'Motivo de perda' },
   { key: 'tipo_lead', header: 'Tipo de lead' },
+  { key: 'areas_analise', header: 'Áreas de análise' },
   { key: 'indicacao', header: 'Indicação' },
   { key: 'nome_indicacao', header: 'Nome da indicação' },
   { key: 'deal_id', header: 'ID negociação' },

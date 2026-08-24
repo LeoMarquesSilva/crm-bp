@@ -2571,6 +2571,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         data_atualizacao: r.updated_at_iso ? new Date(r.updated_at_iso).toLocaleDateString('pt-BR') : '',
         motivo_perda: r.motivo_perda || '',
         tipo_lead: getLeadField(r, 'tipo_lead') ?? '',
+        areas_analise: r.areas || '',
         indicacao: getLeadField(r, 'indicacao') ?? '',
         nome_indicacao: getLeadField(r, 'nome_indicacao') ?? '',
         deal_id: r.deal_id || '',
