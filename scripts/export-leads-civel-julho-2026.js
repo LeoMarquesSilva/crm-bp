@@ -1,16 +1,21 @@
 /* eslint-disable no-console */
 /**
- * Exporta Excel: TODOS os leads da área Cível criados em julho/2026
+ * Exporta Excel: TODOS os leads da área Cível criados num período
  * (Funil de vendas), com status Ganho, Perdido ou Em andamento.
  *
  * "Área Cível" segue a mesma definição usada no Dashboard/AnalisePlanilha:
  * área da equipe do solicitante (e-mail do solicitante → tag), via
  * TEAM_BY_EMAIL / getAreaByEmail (src/data/teamAvatars.ts).
  *
+ * Os limites de data (--inicio/--fim) são calculados em horário de Brasília
+ * (America/Sao_Paulo, UTC-3), do mesmo jeito que o filtro de período do
+ * Dashboard (src/pages/AnalisePlanilha.tsx), para os números baterem.
+ *
  * Uso:
  *   node scripts/export-leads-civel-julho-2026.js
+ *   node scripts/export-leads-civel-julho-2026.js --inicio=2026-07-01 --fim=2026-08-17 --label=01jul-17ago-2026
  *
- * Saída: exports/leads-civel-julho-2026.xlsx
+ * Saída: exports/leads-civel-<label>.xlsx (label padrão: julho-2026)
  */
 import fs from 'fs'
 import path from 'path'
@@ -23,8 +28,27 @@ loadEnvFromRoot()
 
 const OUT_DIR = 'exports'
 const AREA_ALVO = 'Cível'
-const INICIO_STR = '2026-07-01'
-const FIM_STR = '2026-07-31'
+const BRASILIA_OFFSET = '-03:00'
+
+function parseArgs() {
+  const args = {}
+  for (const raw of process.argv.slice(2)) {
+    const m = raw.match(/^--([^=]+)=(.*)$/)
+    if (m) args[m[1]] = m[2]
+  }
+  return args
+}
+
+const argv = parseArgs()
+const INICIO_STR = argv.inicio || '2026-07-01'
+const FIM_STR = argv.fim || '2026-07-31'
+const LABEL = argv.label || 'julho-2026'
+
+/** Início/fim do dia (YYYY-MM-DD) em horário de Brasília, como instante absoluto — mesmo critério do Dashboard. */
+function brasiliaDayBoundary(ymd, endOfDay) {
+  const time = endOfDay ? '23:59:59.999' : '00:00:00.000'
+  return new Date(`${ymd}T${time}${BRASILIA_OFFSET}`)
+}
 
 /** Mesma lista de api/validar-sheets.js DISREGARD_STAGE_NAMES */
 const DISREGARD_STAGE_NAMES = [
@@ -233,9 +257,8 @@ async function readSheetRows(spreadsheetId, sheetName, accessToken) {
 }
 
 async function main() {
-  const dataInicio = parseDate(INICIO_STR)
-  const dataFim = parseDate(FIM_STR)
-  dataFim.setHours(23, 59, 59, 999)
+  const dataInicio = brasiliaDayBoundary(INICIO_STR, false)
+  const dataFim = brasiliaDayBoundary(FIM_STR, true)
 
   const spreadsheetId = (process.env.VITE_PLANILHA_ID || '').trim()
   const sheetName = (process.env.VITE_PLANILHA_ABA || '').trim() || undefined
@@ -380,7 +403,7 @@ async function main() {
   }
 
   const resumoGeralMap = new Map()
-  for (const r of filtered) bumpStats(resumoGeralMap, 'Cível — Julho/2026', r.estado)
+  for (const r of filtered) bumpStats(resumoGeralMap, `Cível — ${INICIO_STR} a ${FIM_STR}`, r.estado)
   const resumoGeral = Array.from(resumoGeralMap.values()).map((r) => ({
     Período: r.label,
     Total: r.total,
@@ -420,7 +443,7 @@ async function main() {
   const emAndamento = detalhe.filter((r) => r.Status === 'Em andamento')
 
   fs.mkdirSync(OUT_DIR, { recursive: true })
-  const outFile = `leads-civel-julho-2026.xlsx`
+  const outFile = `leads-civel-${LABEL}.xlsx`
   const outPath = path.join(OUT_DIR, outFile)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumoGeral), 'Resumo Geral')

@@ -2570,9 +2570,9 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         data_criacao: r.created_at_iso ? new Date(r.created_at_iso).toLocaleDateString('pt-BR') : '',
         data_atualizacao: r.updated_at_iso ? new Date(r.updated_at_iso).toLocaleDateString('pt-BR') : '',
         motivo_perda: r.motivo_perda || '',
-        tipo_lead: r.tipo_lead || '',
-        indicacao: r.indicacao || '',
-        nome_indicacao: r.nome_indicacao || '',
+        tipo_lead: getLeadField(r, 'tipo_lead') ?? '',
+        indicacao: getLeadField(r, 'indicacao') ?? '',
+        nome_indicacao: getLeadField(r, 'nome_indicacao') ?? '',
         deal_id: r.deal_id || '',
         link_crm: r.deal_id ? `${RD_CRM_DEAL_URL}${r.deal_id}` : '',
       }
@@ -2582,7 +2582,7 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       filtrosLabel: filtrosAtivosLabel,
       nomeArquivoBase: filterArea ? `leads-${filterArea.toLowerCase().replace(/\s+/g, '-')}` : 'leads-filtro-dashboard',
     })
-  }, [results, filtrosAtivosLabel, filterArea])
+  }, [results, filtrosAtivosLabel, filterArea, getLeadField])
 
   const openWppModal = useCallback(() => {
     setWppMessage(reportText)
