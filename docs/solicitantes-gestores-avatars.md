@@ -55,6 +55,12 @@ Colaboradores marcados `INATIVO` (`active: false` em `teamAvatars.ts`) continuam
   - Email equivalente: `renato@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/trabalhista/renato-rossetti.jpg
 
+- **Caroline Simel Abdalla**
+  - Area: `Trabalhista`
+  - Email principal: `carolineabdalla@bpplaw.com.br`
+  - Email equivalente: `carolineabdalla@bismarchipires.com.br`
+  - Avatar: https://www.bismarchipires.com.br/img/team/trabalhista/carol-abdalla.png
+
 - **Michel Malaquias** — `INATIVO`
   - Area: `Distressed Deals`
   - Email principal: `michel.malaquias@bpplaw.com.br`
@@ -73,7 +79,7 @@ Colaboradores marcados `INATIVO` (`active: false` em `teamAvatars.ts`) continuam
   - Email equivalente: `ariany.bispo@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/distressed-deals/ariany-bispo.png
 
-- **Jorge Pecht Souza**
+- **Jorge Pecht Souza** — `INATIVO`
   - Area: `Reestruturação`
   - Email principal: `jorge@bpplaw.com.br`
   - Email equivalente: `jorge@bismarchipires.com.br`

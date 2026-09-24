@@ -544,6 +544,7 @@ const SOLICITANTE_NOMES_VALIDOS = [
   'Michel Malaquias',
   'Daniel Pressatto Fernandes',
   'Renato Vallim',
+  'Caroline Simel Abdalla',
   'Wagner Armani',
   'Jansonn Mendonça Batista',
   'Leonardo Loureiro Basso',

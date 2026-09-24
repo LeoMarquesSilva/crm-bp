@@ -58,6 +58,11 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Trabalhista',
     name: 'Renato Vallim',
   },
+  'carolineabdalla@bpplaw.com.br': {
+    avatar: `${BASE_URL}/trabalhista/carol-abdalla.png`,
+    tag: 'Trabalhista',
+    name: 'Caroline Simel Abdalla',
+  },
   // Distressed Deals
   'michel.malaquias@bpplaw.com.br': {
     avatar: `${BASE_URL}/distressed-deals/michel.jpg`,
@@ -82,6 +87,7 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     avatar: `${BASE_URL}/reestruturacao/jorge-pecht-souza.jpg`,
     tag: 'Reestruturação',
     name: 'Jorge Pecht Souza',
+    active: false,
   },
   'leonardo@bpplaw.com.br': {
     avatar: `${BASE_URL}/reestruturacao/leo-loureiro.png`,
