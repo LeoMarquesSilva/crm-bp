@@ -91,6 +91,11 @@ type SemAreaDetalhe = { solicitanteNome: string; leadNome: string }
 import { cn } from '@/lib/utils'
 import { downloadRelatorioPosvendaEtapasXlsx, type PosvendaRelatorioLinha } from '@/lib/relatorioPosvendaEtapasXlsx'
 import { downloadListaLeadsXlsx, type ListaLeadsLinha } from '@/lib/relatorioListaLeadsXlsx'
+import {
+  downloadRelatorioCompletoXlsx,
+  type RelatorioCompletoLinha,
+  type StatusRelatorio,
+} from '@/lib/relatorioCompletoXlsx'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 const API = (path: string) => `${API_BASE}/api${path}`
@@ -639,6 +644,32 @@ const INDICACAO_ICONS: Record<string, JSX.Element> = {
 const MESES_LABEL: Record<number, string> = {
   1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho',
   7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro',
+}
+
+/** "Áreas de análise" vem da planilha como JSON (["Cível","Trabalhista"]) ou texto separado por , ; | */
+function parseAreasAnalise(raw: string | null | undefined): string[] {
+  const s = (raw ?? '').trim()
+  if (!s || s === '[]') return []
+  if (s.startsWith('[')) {
+    try {
+      const arr = JSON.parse(s)
+      if (Array.isArray(arr)) return arr.map((x) => String(x ?? '').trim()).filter(Boolean)
+    } catch {
+      /* texto que só começa com colchete: cai no split abaixo */
+    }
+  }
+  return s.split(/[,;|]/).map((x) => x.trim()).filter(Boolean)
+}
+
+function formatDataBr(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+}
+
+function isLeadEmAndamento(r: { status?: string | null }): boolean {
+  return r.status !== 'win' && r.status !== 'lost'
 }
 
 const AREA_COLOR_FALLBACK = ['#d97706', '#0d9488', '#4f46e5', '#64748b', '#059669', '#7c3aed', '#0369a1', '#b45309', '#0f766e', '#6b21a8']
@@ -2095,6 +2126,11 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [posvendaExportLoading, setPosvendaExportLoading] = useState(false)
   const [posvendaExportError, setPosvendaExportError] = useState<string | null>(null)
+  /** Relatório completo: em andamento traz todos em aberto (qualquer data) ou só os criados no período. */
+  const [relAndamentoTudo, setRelAndamentoTudo] = useState(true)
+  const [relAreaAnalise, setRelAreaAnalise] = useState('')
+  const [relCompletoLoading, setRelCompletoLoading] = useState(false)
+  const [relCompletoError, setRelCompletoError] = useState<string | null>(null)
   const [showWppModal, setShowWppModal] = useState(false)
   const [wppDestinations, setWppDestinations] = useState<WppDestination[]>([])
   /** 'manual' = digitar número; senão = id do destino salvo */
@@ -2567,11 +2603,11 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         funil: r.funil || '',
         etapa: r.stage_name || '',
         status: statusLabel(r.status, r.status_raw),
-        data_criacao: r.created_at_iso ? new Date(r.created_at_iso).toLocaleDateString('pt-BR') : '',
-        data_atualizacao: r.updated_at_iso ? new Date(r.updated_at_iso).toLocaleDateString('pt-BR') : '',
+        data_criacao: formatDataBr(r.created_at_iso),
+        data_atualizacao: formatDataBr(r.updated_at_iso),
         motivo_perda: r.motivo_perda || '',
         tipo_lead: getLeadField(r, 'tipo_lead') ?? '',
-        areas_analise: r.areas || '',
+        areas_analise: parseAreasAnalise(r.areas).join(', '),
         indicacao: getLeadField(r, 'indicacao') ?? '',
         nome_indicacao: getLeadField(r, 'nome_indicacao') ?? '',
         deal_id: r.deal_id || '',
@@ -2584,6 +2620,107 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
       nomeArquivoBase: filterArea ? `leads-${filterArea.toLowerCase().replace(/\s+/g, '-')}` : 'leads-filtro-dashboard',
     })
   }, [results, filtrosAtivosLabel, filterArea, getLeadField])
+
+  const areasAnaliseDisponiveis = useMemo(() => {
+    const set = new Set<string>()
+    rawResults.forEach((r) => parseAreasAnalise(r.areas).forEach((a) => set.add(a)))
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [rawResults])
+
+  /** Mesmos filtros do dashboard; com "andamento: todos", leads em aberto entram mesmo criados fora do período. */
+  const leadsRelatorioCompleto = useMemo(() => {
+    const noPeriodo = new Set(results)
+    let rows = filterByFunil(rawResults, filterFunil)
+    if (filterSolicitante) rows = filterBySolicitante(rows, filterSolicitante, getSolicitanteKey)
+    if (filterArea) rows = filterByArea(rows, filterArea, getAreaByEmail)
+    rows = filterByEtapas(rows, selectedEtapas)
+    rows = rows.filter((r) => noPeriodo.has(r) || (relAndamentoTudo && isLeadEmAndamento(r)))
+    if (relAreaAnalise) {
+      rows = rows.filter((r) => parseAreasAnalise(r.areas).includes(relAreaAnalise))
+    }
+    return rows
+  }, [results, rawResults, filterFunil, filterSolicitante, filterArea, selectedEtapas, relAndamentoTudo, relAreaAnalise])
+
+  const contagemRelatorioCompleto = useMemo(() => {
+    const won = leadsRelatorioCompleto.filter((r) => r.status === 'win').length
+    const lost = leadsRelatorioCompleto.filter((r) => r.status === 'lost').length
+    return { total: leadsRelatorioCompleto.length, won, lost, ongoing: leadsRelatorioCompleto.length - won - lost }
+  }, [leadsRelatorioCompleto])
+
+  const handleExportRelatorioCompleto = useCallback(async () => {
+    setRelCompletoLoading(true)
+    setRelCompletoError(null)
+    try {
+      const statusDe = (r: PlanilhaRow): StatusRelatorio =>
+        r.status === 'win' ? 'Ganho (Vendido)' : r.status === 'lost' ? 'Perdido' : 'Em andamento'
+      const linhas: RelatorioCompletoLinha[] = leadsRelatorioCompleto.map((r) => {
+        const email = (r.email_solicitante ?? r.email_notificar ?? '').trim()
+        const member = email ? getTeamMember(email) : null
+        const ym = getYearMonthBrasilia(r.created_at_iso)
+        const criadoMs = r.created_at_iso ? new Date(r.created_at_iso).getTime() : NaN
+        return {
+          data_criacao_ms: Number.isNaN(criadoMs) ? null : criadoMs,
+          data_criacao: formatDataBr(r.created_at_iso),
+          mes_criacao: ym ? `${(MESES_LABEL[ym.month] ?? '').slice(0, 3)}/${ym.year}` : '',
+          ultima_atualizacao: formatDataBr(r.updated_at_iso),
+          nome_lead: r.nome_lead || r.razao_social || r.id_registro || `Linha ${r.rowIndex}`,
+          razao_social: r.razao_social || '',
+          responsavel: member?.name ?? (email || '(sem e-mail)'),
+          area_responsavel: (email ? getAreaByEmail(email) : null) ?? '(sem área)',
+          areas_analise: parseAreasAnalise(r.areas).join(', '),
+          status: statusDe(r),
+          etapa: r.stage_name || '',
+          funil: r.funil || '',
+          tipo_lead: getLeadField(r, 'tipo_lead') ?? '',
+          indicacao: getLeadField(r, 'indicacao') ?? '',
+          nome_indicacao: getLeadField(r, 'nome_indicacao') ?? '',
+          motivo_perda: r.status === 'lost' ? r.motivo_perda || '' : '',
+          motivo_perda_anotacao:
+            r.status === 'lost' ? String(r.motivo_perda_anotacao ?? r.planilha?.motivo_perda_anotacao ?? '').trim() : '',
+          email_solicitante: email,
+          deal_id: r.deal_id || '',
+          link_crm: r.deal_id ? `${RD_CRM_DEAL_URL}${r.deal_id}` : '',
+        }
+      })
+
+      const escopoArea = relAreaAnalise ? `Área de análise: ${relAreaAnalise}` : 'Todas as áreas'
+      const criterioAndamento = !hasPeriodoFiltro
+        ? 'Sem filtro de período: todos os leads, de qualquer data.'
+        : relAndamentoTudo
+          ? `Ganhos e perdidos: criados em ${periodoFiltroAtivo}. Em andamento: todos os leads em aberto hoje, de qualquer data de criação.`
+          : `Todos os status: somente leads criados em ${periodoFiltroAtivo}.`
+      const slug = (s: string) =>
+        s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+
+      await downloadRelatorioCompletoXlsx(linhas, {
+        titulo: `Leads · ${aiPeriodLabel} · ${escopoArea}`,
+        criterios: [
+          ['Período', aiPeriodLabel],
+          ['Critério de data', criterioAndamento],
+          ...(filtrosAtivosLabel !== aiPeriodLabel
+            ? ([['Filtros do dashboard', filtrosAtivosLabel]] as [string, string][])
+            : []),
+          ['Área de análise do lead', relAreaAnalise || 'Todas'],
+          ['Área do responsável', 'Tag do solicitante (e-mail do solicitante), mesma regra do Dashboard.'],
+        ],
+        nomeArquivo: `relatorio-leads-${slug(aiPeriodLabel)}${relAreaAnalise ? `-${slug(relAreaAnalise)}` : ''}-${hoje}.xlsx`,
+      })
+    } catch (e) {
+      setRelCompletoError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRelCompletoLoading(false)
+    }
+  }, [
+    leadsRelatorioCompleto,
+    getLeadField,
+    relAreaAnalise,
+    relAndamentoTudo,
+    hasPeriodoFiltro,
+    periodoFiltroAtivo,
+    aiPeriodLabel,
+    filtrosAtivosLabel,
+  ])
 
   const openWppModal = useCallback(() => {
     setWppMessage(reportText)
@@ -3149,6 +3286,85 @@ export function AnalisePlanilha({ activeTab: activeTabProp, onTabChange }: Anali
         </div>
         {wppError && (
           <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{wppError}</div>
+        )}
+      </DashboardSection>
+
+      <DashboardSection
+        icon={<FileSpreadsheet className="h-5 w-5" />}
+        title="Relatório completo (Excel)"
+        description="Excel organizado: resumo com indicadores, por mês, área e responsável, abas de ganhos, perdidos e em andamento, etapas, motivos de perda e critérios usados."
+        fullWidth
+      >
+        <p className="text-sm text-gray-600 mb-4">
+          Usa os filtros do topo do Dashboard: <span className="font-medium text-gray-800">{filtrosAtivosLabel}</span>.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 mb-4">
+          <fieldset className="rounded-lg border border-gray-200 p-3">
+            <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Leads em andamento</legend>
+            <label className="flex items-start gap-2 text-sm text-gray-700 mb-2 cursor-pointer">
+              <input
+                type="radio"
+                name="rel-andamento"
+                className="mt-0.5"
+                checked={relAndamentoTudo}
+                onChange={() => setRelAndamentoTudo(true)}
+              />
+              <span>
+                Todos em aberto, de qualquer data
+                <span className="block text-xs text-gray-500">Ganhos e perdidos continuam só os criados no período.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="radio"
+                name="rel-andamento"
+                className="mt-0.5"
+                checked={!relAndamentoTudo}
+                onChange={() => setRelAndamentoTudo(false)}
+              />
+              <span>Só os criados no período</span>
+            </label>
+            {!hasPeriodoFiltro && (
+              <p className="mt-2 text-xs text-amber-700">Sem período selecionado no topo, as duas opções trazem tudo.</p>
+            )}
+          </fieldset>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <label htmlFor="rel-area-analise" className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+              Área de análise do lead
+            </label>
+            <select
+              id="rel-area-analise"
+              value={relAreaAnalise}
+              onChange={(e) => setRelAreaAnalise(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm"
+            >
+              <option value="">Todas</option>
+              {areasAnaliseDisponiveis.map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-gray-500">
+              Campo "Áreas que serão objeto de análise" do cadastro. É diferente do filtro "Área" do topo, que é a área do responsável.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Total {contagemRelatorioCompleto.total}</span>
+          <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-800">Ganhos {contagemRelatorioCompleto.won}</span>
+          <span className="rounded-full bg-red-100 px-3 py-1 font-medium text-red-800">Perdidos {contagemRelatorioCompleto.lost}</span>
+          <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800">Em andamento {contagemRelatorioCompleto.ongoing}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportRelatorioCompleto}
+          disabled={relCompletoLoading || contagemRelatorioCompleto.total === 0}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          {relCompletoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+          Gerar relatório completo
+        </button>
+        {relCompletoError && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{relCompletoError}</div>
         )}
       </DashboardSection>
 
