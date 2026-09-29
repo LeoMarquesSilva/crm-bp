@@ -1,6 +1,9 @@
 /**
- * API – Sincroniza status, etapa e updated_at: RD CRM -> Google Sheets
+ * API – Sincroniza status, etapa, updated_at e motivo da perda: RD CRM -> Google Sheets
  * POST body: { accessToken?, spreadsheetId, sheetName?, dryRun? }
+ *
+ * motivo_perda: só é preenchido quando o deal está perdido no RD (win === false),
+ * tem "deal_lost_reason" e a célula da planilha está vazia (não sobrescreve valor já preenchido).
  *
  * Se accessToken omitido, tenta refreshSharedGoogleAccessToken().
  */
@@ -219,6 +222,7 @@ export async function runStatusSync(opts) {
   const statusCol = findHeaderCol(headerIndex, ['status', 'estado', 'situacao', 'status_da_negociacao'])
   const stageCol = findHeaderCol(headerIndex, ['stage_name', 'stage', 'etapa', 'nome_etapa', 'nome_da_etapa'])
   const updatedCol = findHeaderCol(headerIndex, ['updated_at', 'date_update'])
+  const motivoPerdaCol = findHeaderCol(headerIndex, ['motivo_perda', 'motivo_de_perda', 'motivo_perda_lost'])
 
   const sheetPrefix =
     sheetName && String(sheetName).trim() ? `'${String(sheetName).trim().replace(/'/g, "''")}'!` : ''
@@ -233,6 +237,7 @@ export async function runStatusSync(opts) {
   let statusFixes = 0
   let stageFixes = 0
   let updatedFixes = 0
+  let motivoPerdaFixes = 0
 
   for (let i = 1; i < rawRows.length; i++) {
     const row = rawRows[i] || []
@@ -266,7 +271,11 @@ export async function runStatusSync(opts) {
       !Number.isNaN(expectedUpdatedMs) &&
       (Number.isNaN(currentUpdatedMs) || Math.abs(expectedUpdatedMs - currentUpdatedMs) > 60_000)
 
-    if (!statusMismatch && !stageMismatch && !updatedMismatch) {
+    const expectedMotivoPerda = deal?.win === false ? toText(deal?.deal_lost_reason?.name || '') : ''
+    const currentMotivoPerda = motivoPerdaCol != null ? toText(row[motivoPerdaCol]) : ''
+    const motivoPerdaMismatch = motivoPerdaCol != null && !!expectedMotivoPerda && !currentMotivoPerda
+
+    if (!statusMismatch && !stageMismatch && !updatedMismatch && !motivoPerdaMismatch) {
       rowsUnchanged++
       continue
     }
@@ -301,6 +310,15 @@ export async function runStatusSync(opts) {
       changes.push({ field: 'updated_at', oldValue: currentUpdated || '(vazio)', newValue: expectedUpdated })
     }
 
+    if (motivoPerdaMismatch && motivoPerdaCol != null) {
+      motivoPerdaFixes++
+      updates.push({
+        range: `${sheetPrefix}${colIndexToLetter(motivoPerdaCol + 1)}${rowNum}`,
+        values: [[expectedMotivoPerda]],
+      })
+      changes.push({ field: 'motivo_perda', oldValue: currentMotivoPerda || '(vazio)', newValue: expectedMotivoPerda })
+    }
+
     if (divergences.length < maxSample) {
       divergences.push({
         rowIndex: rowNum,
@@ -330,11 +348,13 @@ export async function runStatusSync(opts) {
       statusFixes,
       stageFixes,
       updatedFixes,
+      motivoPerdaFixes,
       updatesCount: updates.length,
       columnsUsed: {
         status: statusCol != null ? headers[statusCol] : null,
         stage: stageCol != null ? headers[stageCol] : null,
         updated_at: updatedCol != null ? headers[updatedCol] : null,
+        motivo_perda: motivoPerdaCol != null ? headers[motivoPerdaCol] : null,
       },
     },
     sampleDivergences: divergences,
