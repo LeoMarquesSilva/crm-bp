@@ -76,6 +76,7 @@ const TEAM_BY_EMAIL = {
   'felipe@bpplaw.com.br': { name: 'Felipe Camargo', tag: 'Operações Legais' },
   'lavinia.ferraz@bpplaw.com.br': { name: 'Lavínia Ferraz Crispim', tag: 'Reestruturação' },
   'francisco.zanin@bpplaw.com.br': { name: 'Francisco Zanin', tag: 'Tributário' },
+  'rafael.sampaio@bpplaw.com.br': { name: 'Rafael Denaro de Almeida Sampaio', tag: 'Operações Legais' },
 }
 
 function normalizeEmailKey(email) {

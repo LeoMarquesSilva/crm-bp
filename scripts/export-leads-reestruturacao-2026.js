@@ -84,9 +84,9 @@ const TEAM_BY_EMAIL = {
   'daniel@bpplaw.com.br': { name: 'Daniel Pressatto Fernandes', tag: 'Trabalhista' },
   'renato@bpplaw.com.br': { name: 'Renato Vallim', tag: 'Trabalhista' },
   'carolineabdalla@bpplaw.com.br': { name: 'Caroline Simel Abdalla', tag: 'Trabalhista' },
-  'michel.malaquias@bpplaw.com.br': { name: 'Michel Malaquias', tag: 'Recuperação de Créditos' },
-  'emanueli.lourenco@bpplaw.com.br': { name: 'Emanueli Lourenço', tag: 'Recuperação de Créditos' },
-  'ariany.bispo@bpplaw.com.br': { name: 'Ariany Bispo', tag: 'Recuperação de Créditos' },
+  'michel.malaquias@bpplaw.com.br': { name: 'Michel Malaquias', tag: 'Distressed Deals' },
+  'emanueli.lourenco@bpplaw.com.br': { name: 'Emanueli Lourenço', tag: 'Distressed Deals' },
+  'ariany.bispo@bpplaw.com.br': { name: 'Ariany Bispo', tag: 'Distressed Deals' },
   'jorge@bpplaw.com.br': { name: 'Jorge Pecht Souza', tag: 'Reestruturação' },
   'leonardo@bpplaw.com.br': { name: 'Leonardo Loureiro Basso', tag: 'Reestruturação' },
   'ligia@bpplaw.com.br': { name: 'Ligia Lopes', tag: 'Reestruturação' },
@@ -96,6 +96,7 @@ const TEAM_BY_EMAIL = {
   'henrique.nascimento@bpplaw.com.br': { name: 'Henrique Franco Nascimento', tag: 'Societário e Contratos' },
   'felipe@bpplaw.com.br': { name: 'Felipe Camargo', tag: 'Operações Legais' },
   'francisco.zanin@bpplaw.com.br': { name: 'Francisco Zanin', tag: 'Tributário' },
+  'rafael.sampaio@bpplaw.com.br': { name: 'Rafael Denaro de Almeida Sampaio', tag: 'Operações Legais' },
 }
 
 function normalizeEmailKey(email) {

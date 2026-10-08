@@ -126,6 +126,11 @@ const TEAM_BY_EMAIL: Record<string, TeamMember> = {
     tag: 'Operações Legais',
     name: 'Felipe Camargo',
   },
+  'rafael.sampaio@bpplaw.com.br': {
+    avatar: 'https://ui-avatars.com/api/?name=Rafael+Denaro&background=0D3B66&color=fff&size=128',
+    tag: 'Operações Legais',
+    name: 'Rafael Denaro de Almeida Sampaio',
+  },
   // Tributário
   'francisco.zanin@bpplaw.com.br': {
     avatar: 'https://www.bismarchipires.com.br/blog/wp-content/uploads/2026/01/Captura-de-tela-2026-01-27-180946.png',

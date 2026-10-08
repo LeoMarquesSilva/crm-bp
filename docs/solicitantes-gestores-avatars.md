@@ -121,6 +121,12 @@ Colaboradores marcados `INATIVO` (`active: false` em `teamAvatars.ts`) continuam
   - Email equivalente: `felipe@bismarchipires.com.br`
   - Avatar: https://www.bismarchipires.com.br/img/team/legal-ops/felipe-carmargo.jpg
 
+- **Rafael Denaro de Almeida Sampaio**
+  - Area: `Operações Legais`
+  - Email principal: `rafael.sampaio@bpplaw.com.br`
+  - Email equivalente: `rafael.sampaio@bismarchipires.com.br`
+  - Avatar: https://ui-avatars.com/api/?name=Rafael+Denaro&background=0D3B66&color=fff&size=128
+
 - **Lavínia Ferraz Crispim**
   - Area: `Reestruturação`
   - Email principal: `lavinia.ferraz@bpplaw.com.br`
